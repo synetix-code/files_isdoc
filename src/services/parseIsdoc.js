@@ -215,6 +215,14 @@ export function parseIsdoc(xmlString) {
 			id: text(ref, 'ID'),
 			issueDate: text(ref, 'IssueDate'),
 		})),
+		// Declared attachments; the actual files live in the .isdocx container
+		supplements: children(child(invoice, 'SupplementsList'), 'Supplement').map((sup) => ({
+			filename: text(sup, 'Filename'),
+			// preview="true" marks a supplied visual preview of the invoice
+			isPreview: sup.getAttribute('preview') === 'true',
+			digestAlgorithm: child(sup, 'DigestMethod')?.getAttribute('Algorithm') ?? null,
+			digestValue: text(sup, 'DigestValue'),
+		})),
 		supplier: parseParty(child(invoice, 'AccountingSupplierParty')),
 		customer: parseParty(child(invoice, 'AccountingCustomerParty')),
 		lines: children(child(invoice, 'InvoiceLines'), 'InvoiceLine').map(parseLine),

@@ -63,7 +63,7 @@ function mainDocumentFromManifest(entries) {
 		return null
 	}
 	for (const node of doc.documentElement.children) {
-		if (node.localName === 'maindocument') {
+		if ((node.localName ?? '').split(':').pop() === 'maindocument') {
 			return node.getAttribute('filename')
 		}
 	}
@@ -71,29 +71,34 @@ function mainDocumentFromManifest(entries) {
 }
 
 /**
- * Extract the ISDOC XML string from raw file bytes.
+ * Load an ISDOC document and its attachments from raw file bytes.
  *
  * @param {Uint8Array} bytes raw content of a .isdoc or .isdocx file
- * @return {string} the ISDOC XML document
+ * @return {{xml: string, attachments: Array<{name: string, data: Uint8Array}>}}
+ *         the ISDOC XML document and any other files shipped in the container
  * @throws {Error} when a container holds no ISDOC document
  */
-export function extractIsdocXml(bytes) {
+export function loadIsdoc(bytes) {
 	if (!isZip(bytes)) {
-		return decodeXml(bytes)
+		return { xml: decodeXml(bytes), attachments: [] }
 	}
 
 	const entries = unzipSync(bytes)
 
-	const declared = mainDocumentFromManifest(entries)
-	if (declared && entries[declared]) {
-		return decodeXml(entries[declared])
+	let mainName = mainDocumentFromManifest(entries)
+	if (!mainName || !entries[mainName]) {
+		// Fallback per spec: first *.isdoc file in the archive root
+		mainName = Object.keys(entries).find((name) => /^[^/]+\.isdoc$/i.test(name))
+	}
+	if (!mainName) {
+		throw new Error(t('files_isdoc', 'No ISDOC document found in the archive'))
 	}
 
-	// Fallback per spec: first *.isdoc file in the archive root
-	const fallback = Object.keys(entries).find((name) => /^[^/]+\.isdoc$/i.test(name))
-	if (fallback) {
-		return decodeXml(entries[fallback])
-	}
+	const attachments = Object.entries(entries)
+		.filter(([name]) => name !== mainName
+			&& name.toLowerCase() !== 'manifest.xml'
+			&& !name.endsWith('/'))
+		.map(([name, data]) => ({ name, data }))
 
-	throw new Error(t('files_isdoc', 'No ISDOC document found in the archive'))
+	return { xml: decodeXml(entries[mainName]), attachments }
 }

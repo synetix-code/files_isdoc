@@ -15,7 +15,7 @@ The invoice content is displayed faithfully — no amounts are recalculated. Sup
 	<description lang="cs"><![CDATA[Zobrazuje české e-faktury ve formátu ISDOC (soubory .isdoc a .isdocx) jako čitelný doklad přímo v Nextcloud Vieweru namísto syrového XML.
 
 Obsah faktury je zobrazen věrně — žádné částky se nedopočítávají. Podporuje standard ISDOC 6.x (viz https://isdoc.cz) včetně kontejnerového formátu .isdocx (ZIP).]]></description>
-	<version>0.4.0</version>
+	<version>0.5.0</version>
 	<licence>agpl</licence>
 	<author mail="jelinek@synetix.cz">Synetix</author>
 	<namespace>FilesIsdoc</namespace>

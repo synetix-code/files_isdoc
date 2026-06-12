@@ -300,6 +300,42 @@
 				</table>
 			</section>
 
+			<!-- Attachments (supplements) -->
+			<section v-if="attachmentItems.length">
+				<h3 class="isdoc-label">{{ t('files_isdoc', 'Attachments') }}:</h3>
+				<ul class="isdoc-attachments">
+					<li v-for="item in attachmentItems" :key="item.key">
+						<span class="isdoc-attachments__name">{{ item.displayName }}</span>
+						<span v-if="item.supplement && item.supplement.isPreview" class="isdoc-attachments__badge">
+							{{ t('files_isdoc', 'supplied invoice preview') }}
+						</span>
+						<span v-if="item.data" class="isdoc-muted">{{ formatSize(item.data.length) }}</span>
+						<span v-if="digestResults[item.key] === true"
+							class="isdoc-mark isdoc-mark--ok"
+							:title="t('files_isdoc', 'Attachment integrity verified (digest matches)')">✓</span>
+						<span v-else-if="digestResults[item.key] === false"
+							class="isdoc-mark isdoc-mark--warn"
+							:title="t('files_isdoc', 'Attachment digest does not match the declared value')">⚠</span>
+						<span v-if="!item.supplement" class="isdoc-muted">
+							({{ t('files_isdoc', 'not declared in the document') }})
+						</span>
+						<template v-if="item.data">
+							<button class="isdoc-attachments__action" @click="downloadAttachment(item)">
+								{{ t('files_isdoc', 'Download') }}
+							</button>
+							<button v-if="openableMime(item.displayName)"
+								class="isdoc-attachments__action"
+								@click="openAttachment(item)">
+								{{ t('files_isdoc', 'Open') }}
+							</button>
+						</template>
+						<span v-else class="isdoc-mark isdoc-mark--warn">
+							⚠ {{ t('files_isdoc', 'The file is missing from the archive') }}
+						</span>
+					</li>
+				</ul>
+			</section>
+
 			<!-- Bottom: VAT recapitulation + additional totals -->
 			<div class="isdoc-bottom">
 				<section v-if="invoice.taxSubTotals.length" class="isdoc-bottom__recap">
@@ -351,7 +387,8 @@
 import axios from '@nextcloud/axios'
 import { translate as t } from '@nextcloud/l10n'
 
-import { extractIsdocXml } from '../services/loadIsdoc.js'
+import { formatSize, mergeAttachments, openableMime, verifyAttachmentDigest } from '../services/attachments.js'
+import { loadIsdoc } from '../services/loadIsdoc.js'
 import { parseIsdoc } from '../services/parseIsdoc.js'
 import { inspectSignature } from '../services/signature.js'
 import { checkStructure, checkSums } from '../services/validateIsdoc.js'
@@ -447,6 +484,10 @@ export default {
 			error: null,
 			// Signature inspection result; null while pending
 			signature: null,
+			// Files shipped in the .isdocx container besides the invoice
+			attachments: [],
+			// Attachment digest results keyed by normalised filename
+			digestResults: {},
 		}
 	},
 
@@ -516,6 +557,9 @@ export default {
 			}
 			return 'isdoc-banner--info'
 		},
+		attachmentItems() {
+			return mergeAttachments(this.invoice.supplements, this.attachments)
+		},
 		signatureMessage() {
 			if (!this.signature) {
 				return '… ' + t('files_isdoc', 'Verifying the signature…')
@@ -534,13 +578,21 @@ export default {
 	async mounted() {
 		try {
 			const response = await axios.get(this.source, { responseType: 'arraybuffer' })
-			const xml = extractIsdocXml(new Uint8Array(response.data))
+			const { xml, attachments } = loadIsdoc(new Uint8Array(response.data))
 			this.invoice = parseIsdoc(xml)
+			this.attachments = attachments
 			this.$emit('update:loaded', true)
 			if (this.invoice.hasSignature) {
 				// Runs after render — crypto libraries are loaded lazily
 				inspectSignature(xml).then((result) => {
 					this.signature = result
+				})
+			}
+			for (const item of this.attachmentItems) {
+				verifyAttachmentDigest(item).then((result) => {
+					if (result !== null) {
+						this.$set(this.digestResults, item.key, result)
+					}
 				})
 			}
 		} catch (e) {
@@ -554,11 +606,32 @@ export default {
 
 	methods: {
 		t,
+		formatSize,
+		openableMime,
 		paymentMeansLabel(code) {
 			return PAYMENT_MEANS_LABELS[code] ?? code
 		},
 		checkLabel(key) {
 			return CHECK_LABELS[key] ?? key
+		},
+		downloadAttachment(item) {
+			// Always served as opaque bytes — never executed by the browser
+			const url = URL.createObjectURL(new Blob([item.data], { type: 'application/octet-stream' }))
+			const link = document.createElement('a')
+			link.href = url
+			link.download = item.displayName.split('/').pop()
+			link.click()
+			URL.revokeObjectURL(url)
+		},
+		openAttachment(item) {
+			// Only types from the safe-list (images, PDF) can be opened
+			const mime = openableMime(item.displayName)
+			if (!mime) {
+				return
+			}
+			const url = URL.createObjectURL(new Blob([item.data], { type: mime }))
+			window.open(url, '_blank')
+			setTimeout(() => URL.revokeObjectURL(url), 60000)
 		},
 		/** Postal address as displayable lines (street, city, country) */
 		addressLines(party) {
@@ -878,5 +951,47 @@ h3.isdoc-label {
 	color: #767676;
 	font-size: 12px;
 	margin: 12px 0 0;
+}
+
+/* Attachment list */
+.isdoc-attachments {
+	list-style: none;
+	margin: 4px 0;
+	padding: 0;
+}
+
+.isdoc-attachments li {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+	padding: 3px 0;
+	border-bottom: 1px dotted #ccc;
+}
+
+.isdoc-attachments__name {
+	font-weight: bold;
+}
+
+.isdoc-attachments__badge {
+	background-color: #d9e8f7;
+	color: #15518f;
+	border-radius: 3px;
+	padding: 0 6px;
+	font-size: 12px;
+}
+
+.isdoc-attachments__action {
+	font-size: 12px;
+	padding: 1px 10px;
+	border: 1px solid #999;
+	border-radius: 3px;
+	background-color: #f5f5f5;
+	color: #222;
+	cursor: pointer;
+}
+
+.isdoc-attachments__action:hover {
+	background-color: #e8e8e8;
 }
 </style>
