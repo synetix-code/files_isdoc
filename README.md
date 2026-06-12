@@ -13,7 +13,8 @@ Náhled českých e-faktur ve formátu **ISDOC** (`.isdoc`, `.isdocx`) přímo v
 - Podpora formátu **ISDOC 6.x** (tolerantní parser zvládne i starší dokumenty 5.x).
 - Podpora kontejneru **`.isdocx`** (ZIP) — hlavní dokument se hledá podle `manifest.xml`, s fallbackem na první `*.isdoc` v archivu.
 - **Věrné zobrazení**: žádné částky se nedopočítávají ani nepřeformátovávají, zobrazují se přesně hodnoty z dokladu.
-- **Validace dokladu** (po vzoru oficiálního ISDOC Readeru): kontrola struktury (namespace, povinné elementy) a **kontrolní součty** — součet položek a rekapitulace DPH se porovnají s deklarovanými součty dokladu. Výsledek se zobrazí v pruzích nad dokladem a jako ✓/⚠ u součtových řádků; zobrazené hodnoty zůstávají vždy ty z dokladu. U podepsaných dokumentů se zobrazí informace o přítomnosti elektronického podpisu (podpis se neověřuje).
+- **Validace dokladu** (po vzoru oficiálního ISDOC Readeru): kontrola struktury (namespace, povinné elementy) a **kontrolní součty** — součet položek a rekapitulace DPH se porovnají s deklarovanými součty dokladu. Výsledek se zobrazí v pruzích nad dokladem a jako ✓/⚠ u součtových řádků; zobrazené hodnoty zůstávají vždy ty z dokladu.
+- **Elektronický podpis**: u podepsaných dokumentů se podpis kryptograficky ověří přímo v prohlížeči (WebCrypto + xmldsigjs) — potvrzuje se **integrita dokumentu** (že nebyl od podpisu změněn) a zobrazí se detail podepisujícího certifikátu (subjekt, vydavatel, platnost, algoritmy, čas podpisu). **Důvěryhodnost certifikátu se neověřuje** (řetěz k autoritě, odvolání ani kvalifikovaný status — to vyžaduje serverovou validaci, viz roadmapa).
 - Automatická registrace MIME typů při instalaci (repair step) — bez ručních zásahů do konfigurace.
 - Česká a anglická lokalizace.
 

@@ -33,8 +33,44 @@
 					<p>✓ {{ t('files_isdoc', 'Control sums match.') }}</p>
 				</div>
 
-				<div v-if="invoice.hasSignature" class="isdoc-banner isdoc-banner--info">
-					<p>🖋 {{ t('files_isdoc', 'The document contains an electronic signature (not verified by this viewer).') }}</p>
+				<div v-if="invoice.hasSignature" class="isdoc-banner" :class="signatureBannerClass">
+					<p>{{ signatureMessage }}</p>
+					<details v-if="signature && signature.details">
+						<summary>{{ t('files_isdoc', 'Signature details') }}</summary>
+						<table class="isdoc-kv isdoc-banner__details">
+							<tr v-if="signature.details.subject">
+								<th>{{ t('files_isdoc', 'Signed by') }}:</th>
+								<td>{{ signature.details.subject }}</td>
+							</tr>
+							<tr v-if="signature.details.issuer">
+								<th>{{ t('files_isdoc', 'Issued by') }}:</th>
+								<td>{{ signature.details.issuer }}</td>
+							</tr>
+							<tr v-if="signature.details.validFrom || signature.details.validTo">
+								<th>{{ t('files_isdoc', 'Certificate validity') }}:</th>
+								<td>{{ signature.details.validFrom }} – {{ signature.details.validTo }}</td>
+							</tr>
+							<tr v-if="signature.details.serialNumber">
+								<th>{{ t('files_isdoc', 'Serial number') }}:</th>
+								<td>{{ signature.details.serialNumber }}</td>
+							</tr>
+							<tr v-if="signature.details.signingTime">
+								<th>{{ t('files_isdoc', 'Signing time') }}:</th>
+								<td>{{ signature.details.signingTime }}</td>
+							</tr>
+							<tr v-if="signature.details.signatureAlgorithm">
+								<th>{{ t('files_isdoc', 'Signature algorithm') }}:</th>
+								<td>{{ signature.details.signatureAlgorithm }}</td>
+							</tr>
+							<tr v-if="signature.details.digestAlgorithm">
+								<th>{{ t('files_isdoc', 'Digest algorithm') }}:</th>
+								<td>{{ signature.details.digestAlgorithm }}</td>
+							</tr>
+						</table>
+						<p v-if="signature.details.weakAlgorithm">
+							⚠ {{ t('files_isdoc', 'The signature uses a weak algorithm (SHA-1/MD5).') }}
+						</p>
+					</details>
 				</div>
 			</div>
 
@@ -317,6 +353,7 @@ import { translate as t } from '@nextcloud/l10n'
 
 import { extractIsdocXml } from '../services/loadIsdoc.js'
 import { parseIsdoc } from '../services/parseIsdoc.js'
+import { inspectSignature } from '../services/signature.js'
 import { checkStructure, checkSums } from '../services/validateIsdoc.js'
 
 /** ISDOC DocumentType code => label (see the ISDOC specification) */
@@ -408,6 +445,8 @@ export default {
 		return {
 			invoice: null,
 			error: null,
+			// Signature inspection result; null while pending
+			signature: null,
 		}
 	},
 
@@ -464,6 +503,32 @@ export default {
 		failedSumChecks() {
 			return this.sumChecks.filter((check) => !check.ok)
 		},
+		signatureBannerClass() {
+			const status = this.signature?.verification.status
+			if (status === 'valid') {
+				return 'isdoc-banner--ok'
+			}
+			if (status === 'invalid') {
+				return 'isdoc-banner--error'
+			}
+			if (status === 'error') {
+				return 'isdoc-banner--warn'
+			}
+			return 'isdoc-banner--info'
+		},
+		signatureMessage() {
+			if (!this.signature) {
+				return '… ' + t('files_isdoc', 'Verifying the signature…')
+			}
+			const { status, reason } = this.signature.verification
+			if (status === 'valid') {
+				return '✓ ' + t('files_isdoc', 'The signature is cryptographically valid — document integrity verified. Certificate trust was not verified.')
+			}
+			if (status === 'invalid') {
+				return '✗ ' + t('files_isdoc', 'The signature is INVALID — the document was modified after signing or the signature is corrupted.')
+			}
+			return '⚠ ' + t('files_isdoc', 'The signature could not be verified: {reason}', { reason: reason ?? '?' })
+		},
 	},
 
 	async mounted() {
@@ -472,6 +537,12 @@ export default {
 			const xml = extractIsdocXml(new Uint8Array(response.data))
 			this.invoice = parseIsdoc(xml)
 			this.$emit('update:loaded', true)
+			if (this.invoice.hasSignature) {
+				// Runs after render — crypto libraries are loaded lazily
+				inspectSignature(xml).then((result) => {
+					this.signature = result
+				})
+			}
 		} catch (e) {
 			console.error('files_isdoc: failed to render invoice', e)
 			this.error = e.message
@@ -552,6 +623,25 @@ export default {
 .isdoc-banner--info {
 	background-color: #d9e8f7;
 	color: #15518f;
+}
+
+.isdoc-banner--error {
+	background-color: #f8d7da;
+	color: #842029;
+}
+
+.isdoc-banner details {
+	margin: 4px 0 2px;
+}
+
+.isdoc-banner summary {
+	cursor: pointer;
+	font-weight: bold;
+}
+
+.isdoc-banner__details {
+	width: auto;
+	margin: 4px 0 4px 16px;
 }
 
 /* Inline control-sum marks next to validated amounts */

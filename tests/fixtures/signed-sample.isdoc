@@ -1,0 +1,81 @@
+<Invoice xmlns="http://isdoc.cz/namespace/2013" version="6.0.2">
+  <DocumentType>1</DocumentType>
+  <ID>TEST-2026-001</ID>
+  <UUID>00000000-0000-0000-0000-000000000001</UUID>
+  <IssueDate>2026-06-12</IssueDate>
+  <TaxPointDate>2026-06-12</TaxPointDate>
+  <VATApplicable>true</VATApplicable>
+  <LocalCurrencyCode>CZK</LocalCurrencyCode>
+  <CurrRate>1</CurrRate>
+  <RefCurrRate>1</RefCurrRate>
+  <AccountingSupplierParty><Party>
+    <PartyIdentification><ID>12345678</ID></PartyIdentification>
+    <PartyName><Name>Testovací dodavatel s.r.o.</Name></PartyName>
+    <PostalAddress><StreetName>Ulice</StreetName><BuildingNumber>1</BuildingNumber>
+      <CityName>Brno</CityName><PostalZone>60200</PostalZone>
+      <Country><IdentificationCode>CZ</IdentificationCode><Name>Česká republika</Name></Country>
+    </PostalAddress>
+    <PartyTaxScheme><CompanyID>CZ12345678</CompanyID><TaxScheme>VAT</TaxScheme></PartyTaxScheme>
+  </Party></AccountingSupplierParty>
+  <AccountingCustomerParty><Party>
+    <PartyIdentification><ID>87654321</ID></PartyIdentification>
+    <PartyName><Name>Testovací odběratel a.s.</Name></PartyName>
+    <PostalAddress><StreetName>Náměstí</StreetName><BuildingNumber>2</BuildingNumber>
+      <CityName>Praha</CityName><PostalZone>11000</PostalZone>
+      <Country><IdentificationCode>CZ</IdentificationCode><Name>Česká republika</Name></Country>
+    </PostalAddress>
+  </Party></AccountingCustomerParty>
+  <InvoiceLines>
+    <InvoiceLine>
+      <ID>1</ID>
+      <InvoicedQuantity unitCode="ks">2</InvoicedQuantity>
+      <LineExtensionAmount>2000.00</LineExtensionAmount>
+      <LineExtensionAmountTaxInclusive>2420.00</LineExtensionAmountTaxInclusive>
+      <LineExtensionTaxAmount>420.00</LineExtensionTaxAmount>
+      <UnitPrice>1000.00</UnitPrice>
+      <UnitPriceTaxInclusive>1210.00</UnitPriceTaxInclusive>
+      <ClassifiedTaxCategory><Percent>21</Percent>
+        <VATCalculationMethod>0</VATCalculationMethod><VATApplicable>true</VATApplicable>
+      </ClassifiedTaxCategory>
+      <Item><Description>Testovací položka</Description></Item>
+    </InvoiceLine>
+  </InvoiceLines>
+  <TaxTotal>
+    <TaxSubTotal>
+      <TaxableAmount>2000.00</TaxableAmount>
+      <TaxAmount>420.00</TaxAmount>
+      <TaxInclusiveAmount>2420.00</TaxInclusiveAmount>
+      <AlreadyClaimedTaxableAmount>0</AlreadyClaimedTaxableAmount>
+      <AlreadyClaimedTaxAmount>0</AlreadyClaimedTaxAmount>
+      <AlreadyClaimedTaxInclusiveAmount>0</AlreadyClaimedTaxInclusiveAmount>
+      <DifferenceTaxableAmount>2000.00</DifferenceTaxableAmount>
+      <DifferenceTaxAmount>420.00</DifferenceTaxAmount>
+      <DifferenceTaxInclusiveAmount>2420.00</DifferenceTaxInclusiveAmount>
+      <TaxCategory><Percent>21</Percent></TaxCategory>
+    </TaxSubTotal>
+    <TaxAmount>420.00</TaxAmount>
+  </TaxTotal>
+  <LegalMonetaryTotal>
+    <TaxExclusiveAmount>2000.00</TaxExclusiveAmount>
+    <TaxInclusiveAmount>2420.00</TaxInclusiveAmount>
+    <AlreadyClaimedTaxExclusiveAmount>0</AlreadyClaimedTaxExclusiveAmount>
+    <AlreadyClaimedTaxInclusiveAmount>0</AlreadyClaimedTaxInclusiveAmount>
+    <DifferenceTaxExclusiveAmount>2000.00</DifferenceTaxExclusiveAmount>
+    <DifferenceTaxInclusiveAmount>2420.00</DifferenceTaxInclusiveAmount>
+    <PaidDepositsAmount>0</PaidDepositsAmount>
+    <PayableAmount>2420.00</PayableAmount>
+  </LegalMonetaryTotal>
+  <PaymentMeans><Payment>
+    <PaidAmount>2420.00</PaidAmount>
+    <PaymentMeansCode>42</PaymentMeansCode>
+    <Details>
+      <PaymentDueDate>2026-06-26</PaymentDueDate>
+      <ID>1234567890</ID>
+      <BankCode>0800</BankCode>
+      <Name>Testovací banka</Name>
+      <IBAN>CZ6508000000001234567890</IBAN>
+      <BIC>GIBACZPX</BIC>
+      <VariableSymbol>2026001</VariableSymbol>
+    </Details>
+  </Payment></PaymentMeans>
+<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#"><ds:SignedInfo><ds:CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/><ds:Reference URI=""><ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><ds:Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/></ds:Transforms><ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/><ds:DigestValue>P2VoaBaKMBh/XAvitfWJmD6Ts5/vJu9MvK+Mz+NnYYw=</ds:DigestValue></ds:Reference></ds:SignedInfo><ds:SignatureValue>iBYM8eb4twkPisqFtB9o6htEbPHb0u6y8n3loY3i3TIZfdZEk7MhMPD84snCf61l+iqllZkNFVLbSd5u9PGN8cjt7OhdOXAg7DqtBoe9IzL9MJudKqJp+144FXokGL3W8C0sZW6tJfOvXzFrdjdB2TVJcSZcrvk91XpGvd3CsDgH2BXJr9Ib11AL3xoTe/9NhTNb0mVBxTRahjwjGKpFyqfX3a5whgX3HiliwOHPRoGcN9L8CxvYFmbAcEGrp2XVYzvE1xpf4ymETcQONimJF6CmLVadsASOIPSzgPuM7xVBSWqlH95WM/u0IDfDdSSi2TBNEHARwbtckKW6bMDYGQ==</ds:SignatureValue><ds:KeyInfo><ds:X509Data><ds:X509Certificate>MIIC8jCCAdygAwIBAgIEATUkoTALBgkqhkiG9w0BAQswPTE7MCQGA1UEAwwdVGVzdG92YWPDrSBwb2RwaXMgZmlsZXNfaXNkb2MwEwYDVQQKDAxTeW5ldGl4IHRlc3QwHhcNMjYwMTAxMDAwMDAwWhcNMzYwMTAxMDAwMDAwWjA9MTswJAYDVQQDDB1UZXN0b3ZhY8OtIHBvZHBpcyBmaWxlc19pc2RvYzATBgNVBAoMDFN5bmV0aXggdGVzdDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBANRhGtS3yjYzLR0taVxLPEXI1V1dJW8i2wSFcXG6UnHWG4KYkwpTMEdbfnyLF1QvQcQP9D54MoLa+WIzjcihfxcmHaeeiJU+l7+hkI6D5TALV8my46AaiJ2rG/Q8FAWP7k+XsVoFdRK0hmUF1t2CtSwOsitR4M3EhD0AjSryidQEVjfIUQnIdJfHO8k64PCjvMd2MH45Ca7YA9asIxFKV8jBUVin4M3xEd6WtHfH4ZoPy4PW7h0/5Cm0QvR8Yn35a6GV+D3bjkcl7Cax/muzydXCKQXUqetFwoBAKSOibqnmoR5aWBiXQhdUUc3WU7e1aLKymBpEsNUMXipInhVReTsCAwEAATALBgkqhkiG9w0BAQsDggEBAC9E4HW5uOkRjsHS9c6g9c4UXF9x2laL43WTaFICtrkoOxWI74r//97OiuIczia9kZIJX/dMFXYSOj8qCWgpqYK9PaZHb4oUL6p3nn1hfgMIWpAWN00SMfmPwqD37T6GEFIBLkaOyfVYgMc+PSgPsuQ9g35Y50x1Kcn6cr76iIcuYsGHiJmsGhH+nSuqba41ncRWJLLt070Jl6tHWm6W/nUpVGJgcLmuJrX3gyA8ApX/tP8jwfV/dmwvhSXCgu27muSbxifjMVIgyCYtTkuB38jFAFYTpsdkisnGWxOpYaQNUoioqqiYPgLCPocNLaHizp0M7i7YZpzDWvYDxLRoXaY=</ds:X509Certificate></ds:X509Data></ds:KeyInfo></ds:Signature></Invoice>

@@ -18,6 +18,15 @@
 import { translate as t } from '@nextcloud/l10n'
 
 /**
+ * @param {Element} node an element
+ * @return {string} localName with any namespace prefix stripped (some DOM
+ *                  implementations keep the prefix in localName)
+ */
+function localName(node) {
+	return (node.localName ?? node.tagName ?? '').split(':').pop()
+}
+
+/**
  * @param {Element|null} el parent element
  * @param {string} name child localName
  * @return {Element|null} first direct child with the given localName
@@ -27,7 +36,7 @@ function child(el, name) {
 		return null
 	}
 	for (const node of el.children) {
-		if (node.localName === name) {
+		if (localName(node) === name) {
 			return node
 		}
 	}
@@ -43,7 +52,7 @@ function children(el, name) {
 	if (!el) {
 		return []
 	}
-	return [...el.children].filter((node) => node.localName === name)
+	return [...el.children].filter((node) => localName(node) === name)
 }
 
 /**
@@ -168,7 +177,7 @@ export function parseIsdoc(xmlString) {
 	}
 
 	const invoice = doc.documentElement
-	if (invoice.localName !== 'Invoice') {
+	if (localName(invoice) !== 'Invoice') {
 		throw new Error(t('files_isdoc', 'The file is not an ISDOC invoice (missing Invoice root element)'))
 	}
 
@@ -180,10 +189,9 @@ export function parseIsdoc(xmlString) {
 		// for documents using a namespace prefix on the root element
 		namespace: invoice.getAttribute('xmlns') ?? invoice.namespaceURI,
 		// Per spec a signed document carries an enveloped XML-DSig Signature
-		// as a direct child of the Invoice root. Detection only — this
-		// viewer does not verify the signature.
-		hasSignature: [...invoice.children].some(
-			(node) => node.localName === 'Signature' && (node.namespaceURI ?? '').includes('xmldsig')),
+		// as a direct child of the Invoice root. Detection only — the
+		// verification itself lives in the signature service.
+		hasSignature: [...invoice.children].some((node) => localName(node) === 'Signature'),
 		documentType: text(invoice, 'DocumentType'),
 		id: text(invoice, 'ID'),
 		uuid: text(invoice, 'UUID'),
