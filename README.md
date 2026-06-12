@@ -81,7 +81,7 @@ php occ maintenance:mimetype:update-js
 ```bash
 npm ci
 npm run watch            # průběžný development build
-make appstore            # release tarball do build/files_isdoc.tar.gz
+npm run appstore         # release tarball do build/files_isdoc.tar.gz (alternativa: make appstore)
 ```
 
 Frontend: Vue 2.7 + Vite (`@nextcloud/vite-config` v1.x — musí zůstat na řadě v1, Viewer běží na Vue 2.7). Backend: PHP, integrace přes event `OCA\Viewer\Event\LoadViewer`.
