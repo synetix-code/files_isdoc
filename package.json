@@ -1,6 +1,6 @@
 {
   "name": "files_isdoc",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Preview Czech ISDOC e-invoices in the Nextcloud Viewer",
   "private": true,
   "type": "module",

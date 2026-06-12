@@ -703,7 +703,6 @@ export default {
 .isdoc-banner {
 	padding: 8px 16px;
 	border-radius: 8px;
-	border-left: 4px solid transparent;
 	font-size: 13px;
 }
 
@@ -718,25 +717,21 @@ export default {
 
 .isdoc-banner--ok {
 	background-color: #e6f4e2;
-	border-left-color: #4c8c3f;
 	color: #1e5128;
 }
 
 .isdoc-banner--warn {
 	background-color: #fdf3d7;
-	border-left-color: #d9a514;
 	color: #6e5200;
 }
 
 .isdoc-banner--info {
 	background-color: #e3eef9;
-	border-left-color: #4a7fb5;
 	color: #15518f;
 }
 
 .isdoc-banner--error {
 	background-color: #fae1e3;
-	border-left-color: #c0392b;
 	color: #842029;
 }
 
