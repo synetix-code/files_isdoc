@@ -83,15 +83,23 @@ const MANDATORY = [
 /** Namespace of the current ISDOC standard (6.x) */
 export const ISDOC_NAMESPACE = 'http://isdoc.cz/namespace/2013'
 
+/** Namespaces of older but well-known ISDOC versions (5.x) */
+const ISDOC_LEGACY_NAMESPACES = [
+	'http://isdoc.cz/namespace/invoice',
+]
+
 /**
  * Structural problems of the document.
  *
  * @param {object} invoice parsed invoice model
- * @return {{unknownNamespace: string|null, missingElements: string[]}} found problems
+ * @return {{unknownNamespace: string|null, isLegacyNamespace: boolean, missingElements: string[]}} found problems
  */
 export function checkStructure(invoice) {
+	const isCurrent = invoice.namespace === ISDOC_NAMESPACE
+	const isLegacy = ISDOC_LEGACY_NAMESPACES.includes(invoice.namespace)
 	return {
-		unknownNamespace: invoice.namespace === ISDOC_NAMESPACE ? null : (invoice.namespace ?? ''),
+		unknownNamespace: (isCurrent || isLegacy) ? null : (invoice.namespace ?? ''),
+		isLegacyNamespace: isLegacy,
 		missingElements: MANDATORY.filter(([, present]) => !present(invoice)).map(([name]) => name),
 	}
 }

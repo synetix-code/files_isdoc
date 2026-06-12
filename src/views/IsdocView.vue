@@ -16,7 +16,12 @@
 					<p v-for="(problem, i) in structureProblems" :key="i">⚠ {{ problem }}</p>
 				</div>
 				<div v-else class="isdoc-banner isdoc-banner--ok">
-					<p>✓ {{ t('files_isdoc', 'The document structure matches the ISDOC format.') }}</p>
+					<p>
+						✓ {{ t('files_isdoc', 'The document structure matches the ISDOC format.') }}
+						<template v-if="structureResult.isLegacyNamespace">
+							({{ t('files_isdoc', 'older ISDOC format version') }})
+						</template>
+					</p>
 				</div>
 
 				<div v-if="failedSumChecks.length" class="isdoc-banner isdoc-banner--warn">
@@ -31,6 +36,43 @@
 				</div>
 				<div v-else-if="sumChecks.length" class="isdoc-banner isdoc-banner--ok">
 					<p>✓ {{ t('files_isdoc', 'Control sums match.') }}</p>
+				</div>
+
+				<div v-if="attachmentItems.length" class="isdoc-banner isdoc-banner--info">
+					<details>
+						<summary>📎 {{ t('files_isdoc', 'Attachments ({count})', { count: attachmentItems.length }) }}</summary>
+						<ul class="isdoc-attachments">
+							<li v-for="item in attachmentItems" :key="item.key">
+								<span class="isdoc-attachments__name">{{ item.displayName }}</span>
+								<span v-if="item.supplement && item.supplement.isPreview" class="isdoc-attachments__badge">
+									{{ t('files_isdoc', 'supplied invoice preview') }}
+								</span>
+								<span v-if="item.data" class="isdoc-attachments__size">{{ formatSize(item.data.length) }}</span>
+								<span v-if="digestResults[item.key] === true"
+									class="isdoc-mark isdoc-mark--ok"
+									:title="t('files_isdoc', 'Attachment integrity verified (digest matches)')">✓</span>
+								<span v-else-if="digestResults[item.key] === false"
+									class="isdoc-mark isdoc-mark--warn"
+									:title="t('files_isdoc', 'Attachment digest does not match the declared value')">⚠</span>
+								<span v-if="!item.supplement" class="isdoc-attachments__size">
+									({{ t('files_isdoc', 'not declared in the document') }})
+								</span>
+								<template v-if="item.data">
+									<button class="isdoc-attachments__action" @click="downloadAttachment(item)">
+										{{ t('files_isdoc', 'Download') }}
+									</button>
+									<button v-if="openableMime(item.displayName)"
+										class="isdoc-attachments__action"
+										@click="openAttachment(item)">
+										{{ t('files_isdoc', 'Open') }}
+									</button>
+								</template>
+								<span v-else class="isdoc-mark isdoc-mark--warn">
+									⚠ {{ t('files_isdoc', 'The file is missing from the archive') }}
+								</span>
+							</li>
+						</ul>
+					</details>
 				</div>
 
 				<div v-if="invoice.hasSignature" class="isdoc-banner" :class="signatureBannerClass">
@@ -48,7 +90,7 @@
 							</tr>
 							<tr v-if="signature.details.validFrom || signature.details.validTo">
 								<th>{{ t('files_isdoc', 'Certificate validity') }}:</th>
-								<td>{{ signature.details.validFrom }} – {{ signature.details.validTo }}</td>
+								<td>{{ formatDate(signature.details.validFrom) }} – {{ formatDate(signature.details.validTo) }}</td>
 							</tr>
 							<tr v-if="signature.details.serialNumber">
 								<th>{{ t('files_isdoc', 'Serial number') }}:</th>
@@ -56,7 +98,7 @@
 							</tr>
 							<tr v-if="signature.details.signingTime">
 								<th>{{ t('files_isdoc', 'Signing time') }}:</th>
-								<td>{{ signature.details.signingTime }}</td>
+								<td>{{ formatDate(signature.details.signingTime) }}</td>
 							</tr>
 							<tr v-if="signature.details.signatureAlgorithm">
 								<th>{{ t('files_isdoc', 'Signature algorithm') }}:</th>
@@ -129,15 +171,15 @@
 						<table class="isdoc-kv">
 							<tr v-if="invoice.issueDate">
 								<th>{{ t('files_isdoc', 'Issue date') }}:</th>
-								<td class="isdoc-kv__value-box">{{ invoice.issueDate }}</td>
+								<td class="isdoc-kv__value-box">{{ formatDate(invoice.issueDate) }}</td>
 							</tr>
 							<tr v-if="primaryPayment && primaryPayment.dueDate">
 								<th>{{ t('files_isdoc', 'Due date') }}:</th>
-								<td class="isdoc-kv__value-box">{{ primaryPayment.dueDate }}</td>
+								<td class="isdoc-kv__value-box">{{ formatDate(primaryPayment.dueDate) }}</td>
 							</tr>
 							<tr v-if="invoice.taxPointDate">
 								<th>{{ t('files_isdoc', 'Tax point date') }}:</th>
-								<td class="isdoc-kv__value-box">{{ invoice.taxPointDate }}</td>
+								<td class="isdoc-kv__value-box">{{ formatDate(invoice.taxPointDate) }}</td>
 							</tr>
 							<tr v-if="primaryPayment && primaryPayment.paymentMeansCode">
 								<th>{{ t('files_isdoc', 'Payment method') }}:</th>
@@ -180,21 +222,21 @@
 								<th>{{ t('files_isdoc', 'Order no.') }}:</th>
 								<td class="isdoc-kv__num">
 									{{ order.salesOrderID || order.externalOrderID }}
-									<template v-if="order.issueDate">&nbsp;{{ t('files_isdoc', 'dated') }} {{ order.issueDate }}</template>
+									<template v-if="order.issueDate">&nbsp;{{ t('files_isdoc', 'dated') }} {{ formatDate(order.issueDate) }}</template>
 								</td>
 							</tr>
 							<tr v-for="(note, i) in invoice.deliveryNoteReferences" :key="'d' + i">
 								<th>{{ t('files_isdoc', 'Delivery note') }}:</th>
 								<td class="isdoc-kv__num">
 									{{ note.id }}
-									<template v-if="note.issueDate">&nbsp;{{ t('files_isdoc', 'dated') }} {{ note.issueDate }}</template>
+									<template v-if="note.issueDate">&nbsp;{{ t('files_isdoc', 'dated') }} {{ formatDate(note.issueDate) }}</template>
 								</td>
 							</tr>
 							<tr v-for="(ref, i) in invoice.originalDocumentReferences" :key="'r' + i">
 								<th>{{ t('files_isdoc', 'Original document') }}:</th>
 								<td class="isdoc-kv__num">
 									{{ ref.id }}
-									<template v-if="ref.issueDate">&nbsp;{{ t('files_isdoc', 'dated') }} {{ ref.issueDate }}</template>
+									<template v-if="ref.issueDate">&nbsp;{{ t('files_isdoc', 'dated') }} {{ formatDate(ref.issueDate) }}</template>
 								</td>
 							</tr>
 						</table>
@@ -288,7 +330,7 @@
 					<tbody>
 						<tr v-for="(payment, index) in invoice.payments" :key="index">
 							<td>{{ paymentMeansLabel(payment.paymentMeansCode) }}</td>
-							<td>{{ payment.dueDate }}</td>
+							<td>{{ formatDate(payment.dueDate) }}</td>
 							<td>
 								{{ payment.accountNumber }}<template v-if="payment.bankCode">/{{ payment.bankCode }}</template>
 								<template v-if="!payment.accountNumber && payment.iban">{{ payment.iban }}</template>
@@ -298,42 +340,6 @@
 						</tr>
 					</tbody>
 				</table>
-			</section>
-
-			<!-- Attachments (supplements) -->
-			<section v-if="attachmentItems.length">
-				<h3 class="isdoc-label">{{ t('files_isdoc', 'Attachments') }}:</h3>
-				<ul class="isdoc-attachments">
-					<li v-for="item in attachmentItems" :key="item.key">
-						<span class="isdoc-attachments__name">{{ item.displayName }}</span>
-						<span v-if="item.supplement && item.supplement.isPreview" class="isdoc-attachments__badge">
-							{{ t('files_isdoc', 'supplied invoice preview') }}
-						</span>
-						<span v-if="item.data" class="isdoc-muted">{{ formatSize(item.data.length) }}</span>
-						<span v-if="digestResults[item.key] === true"
-							class="isdoc-mark isdoc-mark--ok"
-							:title="t('files_isdoc', 'Attachment integrity verified (digest matches)')">✓</span>
-						<span v-else-if="digestResults[item.key] === false"
-							class="isdoc-mark isdoc-mark--warn"
-							:title="t('files_isdoc', 'Attachment digest does not match the declared value')">⚠</span>
-						<span v-if="!item.supplement" class="isdoc-muted">
-							({{ t('files_isdoc', 'not declared in the document') }})
-						</span>
-						<template v-if="item.data">
-							<button class="isdoc-attachments__action" @click="downloadAttachment(item)">
-								{{ t('files_isdoc', 'Download') }}
-							</button>
-							<button v-if="openableMime(item.displayName)"
-								class="isdoc-attachments__action"
-								@click="openAttachment(item)">
-								{{ t('files_isdoc', 'Open') }}
-							</button>
-						</template>
-						<span v-else class="isdoc-mark isdoc-mark--warn">
-							⚠ {{ t('files_isdoc', 'The file is missing from the archive') }}
-						</span>
-					</li>
-				</ul>
 			</section>
 
 			<!-- Bottom: VAT recapitulation + additional totals -->
@@ -385,7 +391,7 @@
 
 <script>
 import axios from '@nextcloud/axios'
-import { translate as t } from '@nextcloud/l10n'
+import { getCanonicalLocale, translate as t } from '@nextcloud/l10n'
 
 import { formatSize, mergeAttachments, openableMime, verifyAttachmentDigest } from '../services/attachments.js'
 import { loadIsdoc } from '../services/loadIsdoc.js'
@@ -523,9 +529,12 @@ export default {
 			}
 			return [supplier.registerKeptAt, supplier.registerFileRef].filter(Boolean).join(', ') || null
 		},
+		structureResult() {
+			return checkStructure(this.invoice)
+		},
 		/** Structure problems as translated messages (empty = structure OK) */
 		structureProblems() {
-			const result = checkStructure(this.invoice)
+			const result = this.structureResult
 			const problems = []
 			if (result.unknownNamespace !== null) {
 				problems.push(t('files_isdoc', 'Unknown document namespace: {ns}', { ns: result.unknownNamespace || '—' }))
@@ -608,6 +617,29 @@ export default {
 		t,
 		formatSize,
 		openableMime,
+		/**
+		 * Format an ISO date(-time) per the user's Nextcloud locale.
+		 * Non-date values are returned untouched.
+		 *
+		 * @param {string|null} value raw value from the document
+		 * @return {string|null} localised date, e.g. "28. 2. 2008"
+		 */
+		formatDate(value) {
+			if (!value || !/^\d{4}-\d{2}-\d{2}/.test(value)) {
+				return value
+			}
+			const date = new Date(value)
+			if (Number.isNaN(date.getTime())) {
+				return value
+			}
+			try {
+				return new Intl.DateTimeFormat(getCanonicalLocale(),
+					value.includes('T') ? { dateStyle: 'medium', timeStyle: 'short' } : { dateStyle: 'medium' },
+				).format(date)
+			} catch (e) {
+				return value
+			}
+		},
 		paymentMeansLabel(code) {
 			return PAYMENT_MEANS_LABELS[code] ?? code
 		},
@@ -665,12 +697,13 @@ export default {
 	margin: 24px auto 0;
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: 6px;
 }
 
 .isdoc-banner {
-	padding: 6px 16px;
-	border-radius: 3px;
+	padding: 8px 16px;
+	border-radius: 8px;
+	border-left: 4px solid transparent;
 	font-size: 13px;
 }
 
@@ -684,22 +717,26 @@ export default {
 }
 
 .isdoc-banner--ok {
-	background-color: #d8efd2;
+	background-color: #e6f4e2;
+	border-left-color: #4c8c3f;
 	color: #1e5128;
 }
 
 .isdoc-banner--warn {
-	background-color: #fdeebc;
-	color: #7a5800;
+	background-color: #fdf3d7;
+	border-left-color: #d9a514;
+	color: #6e5200;
 }
 
 .isdoc-banner--info {
-	background-color: #d9e8f7;
+	background-color: #e3eef9;
+	border-left-color: #4a7fb5;
 	color: #15518f;
 }
 
 .isdoc-banner--error {
-	background-color: #f8d7da;
+	background-color: #fae1e3;
+	border-left-color: #c0392b;
 	color: #842029;
 }
 
@@ -714,34 +751,20 @@ export default {
 
 .isdoc-banner__details {
 	width: auto;
-	margin: 4px 0 4px 16px;
-}
-
-/* Inline control-sum marks next to validated amounts */
-.isdoc-mark {
-	margin-left: 4px;
-	font-weight: bold;
-	cursor: help;
-}
-
-.isdoc-mark--ok {
-	color: #2e7d32;
-}
-
-.isdoc-mark--warn {
-	color: #c77700;
+	margin: 6px 0 6px 16px;
 }
 
 /* The invoice is rendered as a white "paper" sheet, like a PDF page */
 .isdoc-paper {
 	max-width: 950px;
-	margin: 24px auto;
-	padding: 32px 40px;
+	margin: 16px auto 32px;
+	padding: 36px 44px;
 	background-color: #fff;
-	color: #222;
-	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+	color: #333;
+	border-radius: 8px;
+	box-shadow: 0 2px 16px rgba(0, 0, 0, 0.18);
 	font-size: 14px;
-	line-height: 1.45;
+	line-height: 1.5;
 }
 
 .isdoc-titlebar {
@@ -750,9 +773,9 @@ export default {
 	align-items: baseline;
 	gap: 16px;
 	flex-wrap: wrap;
-	border-bottom: 2px solid #222;
-	padding-bottom: 4px;
-	margin-bottom: 12px;
+	border-bottom: 2px solid #15518f;
+	padding-bottom: 8px;
+	margin-bottom: 16px;
 }
 
 .isdoc-titlebar__supplier {
@@ -770,8 +793,8 @@ export default {
 .isdoc-grid {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
-	gap: 8px;
-	margin-bottom: 12px;
+	gap: 10px;
+	margin-bottom: 16px;
 }
 
 @media (max-width: 700px) {
@@ -783,13 +806,14 @@ export default {
 .isdoc-grid__col {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: 10px;
 }
 
 .isdoc-box {
-	border: 1px solid #999;
-	border-radius: 2px;
-	padding: 8px 12px;
+	border: 1px solid #e4e7eb;
+	border-radius: 8px;
+	background-color: #fcfcfd;
+	padding: 10px 14px;
 	flex: 0 0 auto;
 }
 
@@ -805,19 +829,21 @@ export default {
 }
 
 .isdoc-box--customer__address {
-	margin: 8px 0 4px 16px;
+	margin: 10px 0 4px 16px;
 	font-size: 15px;
 }
 
 .isdoc-label {
-	color: #15518f;
+	color: #5b7795;
 	font-weight: bold;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
 	margin-bottom: 4px;
 }
 
 h3.isdoc-label {
-	font-size: 14px;
-	margin: 16px 0 4px;
+	margin: 18px 0 4px;
 }
 
 .isdoc-party__name {
@@ -841,6 +867,7 @@ h3.isdoc-label {
 .isdoc-kv th {
 	text-align: left;
 	font-weight: normal;
+	color: #666;
 	padding: 1px 12px 1px 0;
 	white-space: nowrap;
 	width: 1%;
@@ -856,10 +883,9 @@ h3.isdoc-label {
 }
 
 .isdoc-kv__value-box {
-	border: 1px solid #999;
-	padding: 1px 8px;
 	text-align: right;
 	white-space: nowrap;
+	font-weight: 600;
 }
 
 .isdoc-kv--ids th {
@@ -875,42 +901,51 @@ h3.isdoc-label {
 .isdoc-lines {
 	width: 100%;
 	border-collapse: collapse;
-	margin: 8px 0 12px;
+	margin: 8px 0 16px;
 }
 
 .isdoc-lines th {
-	border-top: 2px solid #222;
-	border-bottom: 1px solid #222;
-	padding: 4px 8px;
+	border-bottom: 1px solid #d4dae1;
+	padding: 6px 8px;
 	text-align: left;
-	font-weight: normal;
+	font-weight: 600;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: #5b7795;
 	white-space: nowrap;
 }
 
 .isdoc-lines td {
-	padding: 4px 8px;
+	padding: 6px 8px;
 	vertical-align: top;
-}
-
-.isdoc-lines tbody tr:first-child td {
-	padding-top: 8px;
+	border-bottom: 1px solid #f0f2f4;
 }
 
 .isdoc-lines tfoot td {
-	border-top: 1px solid #222;
-	padding: 4px 8px;
+	border-top: 1px solid #d4dae1;
+	border-bottom: none;
+	padding: 6px 8px;
 }
 
 .isdoc-lines__subtotal td {
-	font-weight: normal;
+	color: #555;
 }
 
 .isdoc-lines__payable td {
 	font-weight: bold;
 	font-size: 15px;
 	text-transform: uppercase;
-	border-top: 1px solid #222;
-	border-bottom: 2px solid #222;
+	color: #15518f;
+	background-color: #eef4fb;
+}
+
+.isdoc-lines__payable td:first-child {
+	border-radius: 6px 0 0 6px;
+}
+
+.isdoc-lines__payable td:last-child {
+	border-radius: 0 6px 6px 0;
 }
 
 .isdoc-num {
@@ -933,14 +968,18 @@ h3.isdoc-label {
 }
 
 .isdoc-recap th {
-	font-weight: normal;
+	font-weight: 600;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: #5b7795;
 	padding: 2px 12px;
-	border-bottom: 1px solid #999;
+	border-bottom: 1px solid #d4dae1;
 	white-space: nowrap;
 }
 
 .isdoc-recap td {
-	padding: 2px 12px;
+	padding: 3px 12px;
 }
 
 .isdoc-bottom__totals {
@@ -948,15 +987,30 @@ h3.isdoc-label {
 }
 
 .isdoc-muted {
-	color: #767676;
+	color: #888;
 	font-size: 12px;
 	margin: 12px 0 0;
 }
 
-/* Attachment list */
+/* Inline control-sum marks next to validated amounts */
+.isdoc-mark {
+	margin-left: 4px;
+	font-weight: bold;
+	cursor: help;
+}
+
+.isdoc-mark--ok {
+	color: #2e7d32;
+}
+
+.isdoc-mark--warn {
+	color: #c77700;
+}
+
+/* Attachment list (inside the info banner) */
 .isdoc-attachments {
 	list-style: none;
-	margin: 4px 0;
+	margin: 6px 0 2px;
 	padding: 0;
 }
 
@@ -965,33 +1019,41 @@ h3.isdoc-label {
 	align-items: center;
 	gap: 8px;
 	flex-wrap: wrap;
-	padding: 3px 0;
-	border-bottom: 1px dotted #ccc;
+	padding: 4px 0;
+}
+
+.isdoc-attachments li + li {
+	border-top: 1px solid rgba(21, 81, 143, 0.12);
 }
 
 .isdoc-attachments__name {
-	font-weight: bold;
+	font-weight: 600;
+}
+
+.isdoc-attachments__size {
+	color: #5b7795;
+	font-size: 12px;
 }
 
 .isdoc-attachments__badge {
-	background-color: #d9e8f7;
+	background-color: rgba(21, 81, 143, 0.12);
 	color: #15518f;
-	border-radius: 3px;
-	padding: 0 6px;
+	border-radius: 10px;
+	padding: 0 8px;
 	font-size: 12px;
 }
 
 .isdoc-attachments__action {
 	font-size: 12px;
-	padding: 1px 10px;
-	border: 1px solid #999;
-	border-radius: 3px;
-	background-color: #f5f5f5;
-	color: #222;
+	padding: 1px 12px;
+	border: 1px solid #b9cad9;
+	border-radius: 6px;
+	background-color: #fff;
+	color: #15518f;
 	cursor: pointer;
 }
 
 .isdoc-attachments__action:hover {
-	background-color: #e8e8e8;
+	background-color: #f0f5fa;
 }
 </style>
