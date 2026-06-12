@@ -14,7 +14,6 @@ Náhled českých e-faktur ve formátu **ISDOC** (`.isdoc`, `.isdocx`) přímo v
 
 - Podpora **ISDOC 6.x** i starších dokumentů 5.x.
 - Podpora kontejneru **`.isdocx`** (ZIP) včetně **příloh** — stažení, otevření bezpečných typů (PDF, obrázky), ověření otisku vůči dokladu.
-- **Věrné zobrazení** — částky se nikdy nedopočítávají ani nepřeformátovávají.
 - **Validace dokladu**: kontrola struktury a kontrolní součty (položky a rekapitulace DPH vs. deklarované součty) zobrazené v pruzích nad dokladem a jako ✓/⚠ u součtů.
 - **Elektronický podpis**: kryptografické ověření integrity dokumentu přímo v prohlížeči + detail podepisujícího certifikátu. Důvěryhodnost certifikátu (řetěz k autoritě, odvolání) se neověřuje.
 - Automatická registrace MIME typů při instalaci, česká a anglická lokalizace, datumy dle locale uživatele.
