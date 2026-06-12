@@ -1,0 +1,14 @@
+/**
+ * SPDX-FileCopyrightText: 2026 Synetix <jelinek@synetix.cz>
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+import { createAppConfig } from '@nextcloud/vite-config'
+
+export default createAppConfig(
+	{
+		main: 'src/main.js',
+	},
+	{
+		inlineCSS: true,
+	},
+)

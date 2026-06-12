@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 Synetix <jelinek@synetix.cz>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend bundle
+        run: npm run build
+
+      - name: PHP syntax check
+        run: find lib -name '*.php' -print0 | xargs -0 -n1 php -l

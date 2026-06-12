@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  - SPDX-FileCopyrightText: 2026 Synetix <jelinek@synetix.cz>
+  - SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+	<path fill="#fff" d="M8 2a2 2 0 0 0-2 2v24a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10l-8-8H8zm9 1.5L24.5 11H19a2 2 0 0 1-2-2V3.5zM10 14h12v2H10v-2zm0 4h12v2H10v-2zm0 4h8v2h-8v-2z"/>
+</svg>

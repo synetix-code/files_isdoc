@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<!--
+  - SPDX-FileCopyrightText: 2026 Synetix <jelinek@synetix.cz>
+  - SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+<info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+	<id>files_isdoc</id>
+	<name>ISDOC Viewer</name>
+	<summary>Preview Czech ISDOC e-invoices (.isdoc/.isdocx) in the Viewer</summary>
+	<summary lang="cs">Náhled českých e-faktur ISDOC (.isdoc/.isdocx) ve Vieweru</summary>
+	<description><![CDATA[Renders Czech ISDOC e-invoices (.isdoc and .isdocx files) as a readable document directly in the Nextcloud Viewer instead of raw XML.
+
+The invoice content is displayed faithfully — no amounts are recalculated. Supports the ISDOC 6.x standard (see https://isdoc.cz) including the .isdocx ZIP container format.]]></description>
+	<description lang="cs"><![CDATA[Zobrazuje české e-faktury ve formátu ISDOC (soubory .isdoc a .isdocx) jako čitelný doklad přímo v Nextcloud Vieweru namísto syrového XML.
+
+Obsah faktury je zobrazen věrně — žádné částky se nedopočítávají. Podporuje standard ISDOC 6.x (viz https://isdoc.cz) včetně kontejnerového formátu .isdocx (ZIP).]]></description>
+	<version>0.1.0</version>
+	<licence>agpl</licence>
+	<author mail="jelinek@synetix.cz">Synetix</author>
+	<namespace>FilesIsdoc</namespace>
+	<category>files</category>
+	<category>office</category>
+	<website>https://github.com/synetix-code/files_isdoc</website>
+	<bugs>https://github.com/synetix-code/files_isdoc/issues</bugs>
+	<repository type="git">https://github.com/synetix-code/files_isdoc.git</repository>
+	<dependencies>
+		<nextcloud min-version="32" max-version="33"/>
+	</dependencies>
+	<repair-steps>
+		<install>
+			<step>OCA\FilesIsdoc\Migration\RegisterMimeTypes</step>
+		</install>
+		<post-migration>
+			<step>OCA\FilesIsdoc\Migration\RegisterMimeTypes</step>
+		</post-migration>
+		<uninstall>
+			<step>OCA\FilesIsdoc\Migration\UnregisterMimeTypes</step>
+		</uninstall>
+	</repair-steps>
+</info>
