@@ -60,8 +60,6 @@ npm run appstore     # release tarball do build/files_isdoc.tar.gz
 
 Frontend: Vue 2.7 + Vite (`@nextcloud/vite-config` v1.x — musí zůstat na řadě v1, Viewer běží na Vue 2.7). Backend: PHP, integrace přes event `OCA\Viewer\Event\LoadViewer`. Testovací faktury jsou umístěny v `tests/fixtures/` (oficiální vzorky z projektu [isdoc/isdoc2ubl](https://github.com/isdoc/isdoc2ubl) pod licencí Apache-2.0).
 
-Release pro App Store je třeba podepsat certifikátem z [registrace aplikace](https://apps.nextcloud.com/developer/apps/releases/new); postup popisuje [dokumentace App Store](https://nextcloudappstore.readthedocs.io/en/latest/developer.html).
-
 ## Zdroje / Resources
 
 - Specifikace ISDOC: https://isdoc.cz ([6.0.2](https://isdoc.cz/6.0.2/doc/isdoc.html)); správcem formátu je Ministerstvo vnitra ČR
