@@ -23,3 +23,5 @@ First public release.
 - Automatic MIME type registration on install (repair step), removal on
   uninstall.
 - Czech and English localisation; dates formatted per the user's locale.
+- Unit test suite (vitest) covering the parser, validation, container
+  loading and attachment handling.

@@ -21,6 +21,7 @@ appstore: build
 	rm -rf $(appstore_dir)
 	mkdir -p $(source_dir)
 	cp -r appinfo img js l10n lib LICENSES README.md CHANGELOG.md $(source_dir)/
+	rm -f $(source_dir)/js/*.map
 	tar -czf $(build_dir)/$(app_name).tar.gz -C $(appstore_dir) $(app_name)
 	@echo "Created $(build_dir)/$(app_name).tar.gz"
 	@echo "Sign it with: openssl dgst -sha512 -sign ~/.nextcloud/certificates/$(app_name).key $(build_dir)/$(app_name).tar.gz | openssl base64"

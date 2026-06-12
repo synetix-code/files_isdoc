@@ -662,7 +662,7 @@ export default {
 				return
 			}
 			const url = URL.createObjectURL(new Blob([item.data], { type: mime }))
-			window.open(url, '_blank')
+			window.open(url, '_blank', 'noopener')
 			setTimeout(() => URL.revokeObjectURL(url), 60000)
 		},
 		/** Postal address as displayable lines (street, city, country) */
