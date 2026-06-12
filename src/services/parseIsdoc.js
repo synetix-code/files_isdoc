@@ -128,6 +128,8 @@ function parseTaxSubTotal(subTotal) {
 		taxableAmount: text(subTotal, 'TaxableAmount'),
 		taxAmount: text(subTotal, 'TaxAmount'),
 		taxInclusiveAmount: text(subTotal, 'TaxInclusiveAmount'),
+		// Tax remaining after deducting settled advances (advance documents)
+		differenceTaxAmount: text(subTotal, 'DifferenceTaxAmount'),
 	}
 }
 
@@ -174,6 +176,14 @@ export function parseIsdoc(xmlString) {
 
 	return {
 		version: invoice.getAttribute('version'),
+		// Prefer the declared default namespace; namespaceURI as fallback
+		// for documents using a namespace prefix on the root element
+		namespace: invoice.getAttribute('xmlns') ?? invoice.namespaceURI,
+		// Per spec a signed document carries an enveloped XML-DSig Signature
+		// as a direct child of the Invoice root. Detection only — this
+		// viewer does not verify the signature.
+		hasSignature: [...invoice.children].some(
+			(node) => node.localName === 'Signature' && (node.namespaceURI ?? '').includes('xmldsig')),
 		documentType: text(invoice, 'DocumentType'),
 		id: text(invoice, 'ID'),
 		uuid: text(invoice, 'UUID'),

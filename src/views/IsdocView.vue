@@ -9,7 +9,36 @@
 			<p>{{ error }}</p>
 		</div>
 
-		<article v-else-if="invoice" class="isdoc-paper">
+		<template v-else-if="invoice">
+			<!-- Validation banners, like the official ISDOC Reader -->
+			<div class="isdoc-banners">
+				<div v-if="structureProblems.length" class="isdoc-banner isdoc-banner--warn">
+					<p v-for="(problem, i) in structureProblems" :key="i">⚠ {{ problem }}</p>
+				</div>
+				<div v-else class="isdoc-banner isdoc-banner--ok">
+					<p>✓ {{ t('files_isdoc', 'The document structure matches the ISDOC format.') }}</p>
+				</div>
+
+				<div v-if="failedSumChecks.length" class="isdoc-banner isdoc-banner--warn">
+					<p>⚠ {{ t('files_isdoc', 'Control sums do not match:') }}</p>
+					<ul>
+						<li v-for="check in failedSumChecks" :key="check.key">
+							{{ checkLabel(check.key) }} — {{ t('files_isdoc', 'declared {declared}, computed {computed}', {
+								declared: check.declared, computed: check.computed,
+							}) }}
+						</li>
+					</ul>
+				</div>
+				<div v-else-if="sumChecks.length" class="isdoc-banner isdoc-banner--ok">
+					<p>✓ {{ t('files_isdoc', 'Control sums match.') }}</p>
+				</div>
+
+				<div v-if="invoice.hasSignature" class="isdoc-banner isdoc-banner--info">
+					<p>🖋 {{ t('files_isdoc', 'The document contains an electronic signature (not verified by this viewer).') }}</p>
+				</div>
+			</div>
+
+			<article class="isdoc-paper">
 			<!-- Title bar: supplier name left, document title right -->
 			<div class="isdoc-titlebar">
 				<span class="isdoc-titlebar__supplier">{{ invoice.supplier ? invoice.supplier.name : '' }}</span>
@@ -187,14 +216,22 @@
 				<tfoot>
 					<tr class="isdoc-lines__subtotal">
 						<td colspan="3">{{ t('files_isdoc', 'Item subtotal') }}</td>
-						<td class="isdoc-num">{{ invoice.totals.taxExclusiveAmount }}</td>
+						<td class="isdoc-num">
+							{{ invoice.totals.taxExclusiveAmount }}<check-mark :check="sumCheckByKey.linesNet" />
+						</td>
 						<td></td>
-						<td class="isdoc-num">{{ invoice.taxTotalAmount }}</td>
-						<td class="isdoc-num">{{ invoice.totals.taxInclusiveAmount }}</td>
+						<td class="isdoc-num">
+							{{ invoice.taxTotalAmount }}<check-mark :check="sumCheckByKey.recapTax" />
+						</td>
+						<td class="isdoc-num">
+							{{ invoice.totals.taxInclusiveAmount }}<check-mark :check="sumCheckByKey.linesGross" />
+						</td>
 					</tr>
 					<tr v-if="invoice.totals.payableAmount !== null" class="isdoc-lines__payable">
 						<td colspan="6">{{ t('files_isdoc', 'Amount to pay') }}</td>
-						<td class="isdoc-num">{{ invoice.totals.payableAmount }} {{ invoice.currency }}</td>
+						<td class="isdoc-num">
+							{{ invoice.totals.payableAmount }} {{ invoice.currency }}<check-mark :check="sumCheckByKey.payable" />
+						</td>
 					</tr>
 				</tfoot>
 			</table>
@@ -269,7 +306,8 @@
 			<footer class="isdoc-muted">
 				ISDOC {{ invoice.version }}<template v-if="invoice.uuid"> · UUID {{ invoice.uuid }}</template>
 			</footer>
-		</article>
+			</article>
+		</template>
 	</div>
 </template>
 
@@ -279,6 +317,7 @@ import { translate as t } from '@nextcloud/l10n'
 
 import { extractIsdocXml } from '../services/loadIsdoc.js'
 import { parseIsdoc } from '../services/parseIsdoc.js'
+import { checkStructure, checkSums } from '../services/validateIsdoc.js'
 
 /** ISDOC DocumentType code => label (see the ISDOC specification) */
 const DOCUMENT_TYPE_LABELS = {
@@ -301,8 +340,44 @@ const PAYMENT_MEANS_LABELS = {
 	97: t('files_isdoc', 'Clearing between partners'),
 }
 
+/** Control-sum check key => human label */
+const CHECK_LABELS = {
+	linesNet: t('files_isdoc', 'Sum of lines excl. VAT'),
+	linesGross: t('files_isdoc', 'Sum of lines incl. VAT'),
+	recapBase: t('files_isdoc', 'VAT recapitulation — taxable amount'),
+	recapTax: t('files_isdoc', 'VAT recapitulation — tax'),
+	recapGross: t('files_isdoc', 'VAT recapitulation — total incl. VAT'),
+	payable: t('files_isdoc', 'Amount to pay'),
+}
+
+/** Green check / orange warning shown next to a validated amount */
+const CheckMark = {
+	name: 'CheckMark',
+	props: {
+		check: { type: Object, default: null },
+	},
+	render(h) {
+		if (!this.check) {
+			return null
+		}
+		const title = this.check.ok
+			? t('files_isdoc', 'Control sum matches')
+			: t('files_isdoc', 'declared {declared}, computed {computed}', {
+				declared: this.check.declared, computed: this.check.computed,
+			})
+		return h('span', {
+			class: ['isdoc-mark', this.check.ok ? 'isdoc-mark--ok' : 'isdoc-mark--warn'],
+			attrs: { title },
+		}, this.check.ok ? '✓' : '⚠')
+	},
+}
+
 export default {
 	name: 'IsdocView',
+
+	components: {
+		CheckMark,
+	},
 
 	inheritAttrs: false,
 
@@ -368,6 +443,27 @@ export default {
 			}
 			return [supplier.registerKeptAt, supplier.registerFileRef].filter(Boolean).join(', ') || null
 		},
+		/** Structure problems as translated messages (empty = structure OK) */
+		structureProblems() {
+			const result = checkStructure(this.invoice)
+			const problems = []
+			if (result.unknownNamespace !== null) {
+				problems.push(t('files_isdoc', 'Unknown document namespace: {ns}', { ns: result.unknownNamespace || '—' }))
+			}
+			if (result.missingElements.length) {
+				problems.push(t('files_isdoc', 'Missing mandatory elements: {names}', { names: result.missingElements.join(', ') }))
+			}
+			return problems
+		},
+		sumChecks() {
+			return checkSums(this.invoice)
+		},
+		sumCheckByKey() {
+			return Object.fromEntries(this.sumChecks.map((check) => [check.key, check]))
+		},
+		failedSumChecks() {
+			return this.sumChecks.filter((check) => !check.ok)
+		},
 	},
 
 	async mounted() {
@@ -389,6 +485,9 @@ export default {
 		t,
 		paymentMeansLabel(code) {
 			return PAYMENT_MEANS_LABELS[code] ?? code
+		},
+		checkLabel(key) {
+			return CHECK_LABELS[key] ?? key
 		},
 		/** Postal address as displayable lines (street, city, country) */
 		addressLines(party) {
@@ -414,6 +513,60 @@ export default {
 	max-width: 600px;
 	margin: 10vh auto;
 	text-align: center;
+}
+
+/* Validation banners above the paper, like the official ISDOC Reader */
+.isdoc-banners {
+	max-width: 950px;
+	margin: 24px auto 0;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.isdoc-banner {
+	padding: 6px 16px;
+	border-radius: 3px;
+	font-size: 13px;
+}
+
+.isdoc-banner p {
+	margin: 2px 0;
+}
+
+.isdoc-banner ul {
+	margin: 2px 0 2px 24px;
+	list-style: disc;
+}
+
+.isdoc-banner--ok {
+	background-color: #d8efd2;
+	color: #1e5128;
+}
+
+.isdoc-banner--warn {
+	background-color: #fdeebc;
+	color: #7a5800;
+}
+
+.isdoc-banner--info {
+	background-color: #d9e8f7;
+	color: #15518f;
+}
+
+/* Inline control-sum marks next to validated amounts */
+.isdoc-mark {
+	margin-left: 4px;
+	font-weight: bold;
+	cursor: help;
+}
+
+.isdoc-mark--ok {
+	color: #2e7d32;
+}
+
+.isdoc-mark--warn {
+	color: #c77700;
 }
 
 /* The invoice is rendered as a white "paper" sheet, like a PDF page */
