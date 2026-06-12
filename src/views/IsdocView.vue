@@ -9,164 +9,265 @@
 			<p>{{ error }}</p>
 		</div>
 
-		<article v-else-if="invoice" class="isdoc-invoice">
-			<!-- Document header -->
-			<header class="isdoc-invoice__header">
-				<h2>{{ documentTypeLabel }} {{ invoice.id }}</h2>
-				<dl class="isdoc-invoice__meta">
-					<template v-if="invoice.issueDate">
-						<dt>{{ t('files_isdoc', 'Issue date') }}</dt>
-						<dd>{{ invoice.issueDate }}</dd>
-					</template>
-					<template v-if="invoice.taxPointDate">
-						<dt>{{ t('files_isdoc', 'Tax point date') }}</dt>
-						<dd>{{ invoice.taxPointDate }}</dd>
-					</template>
-					<template v-if="invoice.currency">
-						<dt>{{ t('files_isdoc', 'Currency') }}</dt>
-						<dd>{{ invoice.currency }}</dd>
-					</template>
-					<template v-if="invoice.uuid">
-						<dt>UUID</dt>
-						<dd class="isdoc-invoice__muted">{{ invoice.uuid }}</dd>
-					</template>
-				</dl>
-			</header>
+		<article v-else-if="invoice" class="isdoc-paper">
+			<!-- Title bar: supplier name left, document title right -->
+			<div class="isdoc-titlebar">
+				<span class="isdoc-titlebar__supplier">{{ invoice.supplier ? invoice.supplier.name : '' }}</span>
+				<span class="isdoc-titlebar__title">
+					{{ documentTypeLabel }} {{ t('files_isdoc', 'no.') }} {{ invoice.id }}
+				</span>
+			</div>
 
-			<!-- Parties -->
-			<section class="isdoc-invoice__parties">
-				<div v-if="invoice.supplier" class="isdoc-invoice__party">
-					<h3>{{ t('files_isdoc', 'Supplier') }}</h3>
-					<party-block :party="invoice.supplier" />
+			<!-- Header grid -->
+			<div class="isdoc-grid">
+				<!-- Left column -->
+				<div class="isdoc-grid__col">
+					<section v-if="invoice.supplier" class="isdoc-box">
+						<div class="isdoc-label">{{ t('files_isdoc', 'Supplier') }}:</div>
+						<div class="isdoc-party__name">{{ invoice.supplier.name }}</div>
+						<div v-for="(line, i) in addressLines(invoice.supplier)" :key="'s' + i">{{ line }}</div>
+						<div class="isdoc-party__ids">
+							<span v-if="invoice.supplier.ico">{{ t('files_isdoc', 'Company ID') }}: {{ invoice.supplier.ico }}</span>
+							<span v-if="invoice.supplier.dic">{{ t('files_isdoc', 'VAT ID') }}: {{ invoice.supplier.dic }}</span>
+						</div>
+						<div v-if="invoice.supplier.telephone">{{ t('files_isdoc', 'Phone') }}: {{ invoice.supplier.telephone }}</div>
+						<div v-if="invoice.supplier.email">{{ t('files_isdoc', 'Email') }}: {{ invoice.supplier.email }}</div>
+					</section>
+
+					<section v-if="bankPayment" class="isdoc-box">
+						<table class="isdoc-kv">
+							<tr v-if="bankPayment.bankName">
+								<th>{{ t('files_isdoc', 'Bank') }}:</th>
+								<td>{{ bankPayment.bankName }}</td>
+							</tr>
+							<tr v-if="bankPayment.bic">
+								<th>SWIFT:</th>
+								<td>{{ bankPayment.bic }}</td>
+							</tr>
+							<tr v-if="bankPayment.iban">
+								<th>IBAN:</th>
+								<td>{{ bankPayment.iban }}</td>
+							</tr>
+							<tr v-if="bankPayment.accountNumber">
+								<th>{{ t('files_isdoc', 'Account number') }}:</th>
+								<td>
+									{{ bankPayment.accountNumber }}
+									<template v-if="bankPayment.bankCode">
+										&nbsp;&nbsp;{{ t('files_isdoc', 'Bank code') }}: {{ bankPayment.bankCode }}
+									</template>
+								</td>
+							</tr>
+						</table>
+					</section>
+
+					<section class="isdoc-box">
+						<table class="isdoc-kv">
+							<tr v-if="invoice.issueDate">
+								<th>{{ t('files_isdoc', 'Issue date') }}:</th>
+								<td class="isdoc-kv__value-box">{{ invoice.issueDate }}</td>
+							</tr>
+							<tr v-if="primaryPayment && primaryPayment.dueDate">
+								<th>{{ t('files_isdoc', 'Due date') }}:</th>
+								<td class="isdoc-kv__value-box">{{ primaryPayment.dueDate }}</td>
+							</tr>
+							<tr v-if="invoice.taxPointDate">
+								<th>{{ t('files_isdoc', 'Tax point date') }}:</th>
+								<td class="isdoc-kv__value-box">{{ invoice.taxPointDate }}</td>
+							</tr>
+							<tr v-if="primaryPayment && primaryPayment.paymentMeansCode">
+								<th>{{ t('files_isdoc', 'Payment method') }}:</th>
+								<td>{{ paymentMeansLabel(primaryPayment.paymentMeansCode) }}</td>
+							</tr>
+							<tr v-if="invoice.currency">
+								<th>{{ t('files_isdoc', 'Currency') }}:</th>
+								<td>{{ invoice.currency }}</td>
+							</tr>
+							<tr v-if="invoice.foreignCurrency">
+								<th>{{ t('files_isdoc', 'Foreign currency') }}:</th>
+								<td>
+									{{ invoice.foreignCurrency }}
+									<template v-if="invoice.currRate">
+										({{ t('files_isdoc', 'Exchange rate') }}: {{ invoice.currRate }})
+									</template>
+								</td>
+							</tr>
+						</table>
+					</section>
 				</div>
-				<div v-if="invoice.customer" class="isdoc-invoice__party">
-					<h3>{{ t('files_isdoc', 'Customer') }}</h3>
-					<party-block :party="invoice.customer" />
+
+				<!-- Right column -->
+				<div class="isdoc-grid__col">
+					<section class="isdoc-box">
+						<table class="isdoc-kv">
+							<tr v-if="primaryPayment && primaryPayment.variableSymbol">
+								<th>{{ t('files_isdoc', 'Variable symbol') }}:</th>
+								<td class="isdoc-kv__num">{{ primaryPayment.variableSymbol }}</td>
+							</tr>
+							<tr v-if="primaryPayment && primaryPayment.constantSymbol">
+								<th>{{ t('files_isdoc', 'Constant symbol') }}:</th>
+								<td class="isdoc-kv__num">{{ primaryPayment.constantSymbol }}</td>
+							</tr>
+							<tr v-if="primaryPayment && primaryPayment.specificSymbol">
+								<th>{{ t('files_isdoc', 'Specific symbol') }}:</th>
+								<td class="isdoc-kv__num">{{ primaryPayment.specificSymbol }}</td>
+							</tr>
+							<tr v-for="(order, i) in invoice.orderReferences" :key="'o' + i">
+								<th>{{ t('files_isdoc', 'Order no.') }}:</th>
+								<td class="isdoc-kv__num">
+									{{ order.salesOrderID || order.externalOrderID }}
+									<template v-if="order.issueDate">&nbsp;{{ t('files_isdoc', 'dated') }} {{ order.issueDate }}</template>
+								</td>
+							</tr>
+							<tr v-for="(note, i) in invoice.deliveryNoteReferences" :key="'d' + i">
+								<th>{{ t('files_isdoc', 'Delivery note') }}:</th>
+								<td class="isdoc-kv__num">
+									{{ note.id }}
+									<template v-if="note.issueDate">&nbsp;{{ t('files_isdoc', 'dated') }} {{ note.issueDate }}</template>
+								</td>
+							</tr>
+							<tr v-for="(ref, i) in invoice.originalDocumentReferences" :key="'r' + i">
+								<th>{{ t('files_isdoc', 'Original document') }}:</th>
+								<td class="isdoc-kv__num">
+									{{ ref.id }}
+									<template v-if="ref.issueDate">&nbsp;{{ t('files_isdoc', 'dated') }} {{ ref.issueDate }}</template>
+								</td>
+							</tr>
+						</table>
+					</section>
+
+					<section v-if="invoice.customer" class="isdoc-box isdoc-box--customer">
+						<div class="isdoc-box--customer__head">
+							<span class="isdoc-label">{{ t('files_isdoc', 'Customer') }}:</span>
+							<table class="isdoc-kv isdoc-kv--ids">
+								<tr v-if="invoice.customer.ico">
+									<th>{{ t('files_isdoc', 'Company ID') }}:</th>
+									<td class="isdoc-kv__num">{{ invoice.customer.ico }}</td>
+								</tr>
+								<tr v-if="invoice.customer.dic">
+									<th>{{ t('files_isdoc', 'VAT ID') }}:</th>
+									<td class="isdoc-kv__num">{{ invoice.customer.dic }}</td>
+								</tr>
+							</table>
+						</div>
+						<div class="isdoc-box--customer__address">
+							<div class="isdoc-party__name">{{ invoice.customer.name }}</div>
+							<div v-for="(line, i) in addressLines(invoice.customer)" :key="'c' + i">{{ line }}</div>
+						</div>
+					</section>
 				</div>
-			</section>
+			</div>
+
+			<!-- Document note (Pohoda prints it as an intro line above the items) -->
+			<p v-if="invoice.note" class="isdoc-note">{{ invoice.note }}</p>
 
 			<!-- Invoice lines -->
-			<section v-if="invoice.lines.length">
-				<h3>{{ t('files_isdoc', 'Invoice lines') }}</h3>
-				<table class="isdoc-invoice__table">
+			<table v-if="invoice.lines.length" class="isdoc-lines">
+				<thead>
+					<tr>
+						<th>{{ t('files_isdoc', 'Description') }}</th>
+						<th class="isdoc-num">{{ t('files_isdoc', 'Quantity') }}</th>
+						<th class="isdoc-num">{{ t('files_isdoc', 'Unit price') }}</th>
+						<th class="isdoc-num">{{ t('files_isdoc', 'Net amount') }}</th>
+						<th class="isdoc-num">{{ t('files_isdoc', 'VAT %') }}</th>
+						<th class="isdoc-num">{{ t('files_isdoc', 'VAT') }}</th>
+						<th class="isdoc-num">{{ t('files_isdoc', 'Total') }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr v-for="(line, index) in invoice.lines" :key="index">
+						<td>{{ line.description }}</td>
+						<td class="isdoc-num">{{ line.quantity }} {{ line.unitCode }}</td>
+						<td class="isdoc-num">{{ line.unitPrice }}</td>
+						<td class="isdoc-num">{{ line.lineExtensionAmount }}</td>
+						<td class="isdoc-num">{{ line.vatRate ? line.vatRate + ' %' : '' }}</td>
+						<td class="isdoc-num">{{ line.lineExtensionTaxAmount }}</td>
+						<td class="isdoc-num">{{ line.lineExtensionAmountTaxInclusive }}</td>
+					</tr>
+				</tbody>
+				<tfoot>
+					<tr class="isdoc-lines__subtotal">
+						<td colspan="3">{{ t('files_isdoc', 'Item subtotal') }}</td>
+						<td class="isdoc-num">{{ invoice.totals.taxExclusiveAmount }}</td>
+						<td></td>
+						<td class="isdoc-num">{{ invoice.taxTotalAmount }}</td>
+						<td class="isdoc-num">{{ invoice.totals.taxInclusiveAmount }}</td>
+					</tr>
+					<tr v-if="invoice.totals.payableAmount !== null" class="isdoc-lines__payable">
+						<td colspan="6">{{ t('files_isdoc', 'Amount to pay') }}</td>
+						<td class="isdoc-num">{{ invoice.totals.payableAmount }} {{ invoice.currency }}</td>
+					</tr>
+				</tfoot>
+			</table>
+
+			<!-- Additional payments (when the document defines more than one) -->
+			<section v-if="invoice.payments.length > 1">
+				<h3 class="isdoc-label">{{ t('files_isdoc', 'Payment information') }}:</h3>
+				<table class="isdoc-lines">
 					<thead>
 						<tr>
-							<th>#</th>
-							<th>{{ t('files_isdoc', 'Description') }}</th>
-							<th class="isdoc-invoice__num">{{ t('files_isdoc', 'Quantity') }}</th>
-							<th class="isdoc-invoice__num">{{ t('files_isdoc', 'Unit price') }}</th>
-							<th class="isdoc-invoice__num">{{ t('files_isdoc', 'VAT rate') }}</th>
-							<th class="isdoc-invoice__num">{{ t('files_isdoc', 'Total excl. VAT') }}</th>
-							<th class="isdoc-invoice__num">{{ t('files_isdoc', 'Total incl. VAT') }}</th>
+							<th>{{ t('files_isdoc', 'Payment method') }}</th>
+							<th>{{ t('files_isdoc', 'Due date') }}</th>
+							<th>{{ t('files_isdoc', 'Bank account') }}</th>
+							<th>{{ t('files_isdoc', 'Variable symbol') }}</th>
+							<th class="isdoc-num">{{ t('files_isdoc', 'Amount') }}</th>
 						</tr>
 					</thead>
 					<tbody>
-						<tr v-for="(line, index) in invoice.lines" :key="index">
-							<td>{{ line.id }}</td>
-							<td>{{ line.description }}</td>
-							<td class="isdoc-invoice__num">{{ line.quantity }} {{ line.unitCode }}</td>
-							<td class="isdoc-invoice__num">{{ line.unitPrice }}</td>
-							<td class="isdoc-invoice__num">{{ line.vatRate ? line.vatRate + ' %' : '' }}</td>
-							<td class="isdoc-invoice__num">{{ line.lineExtensionAmount }}</td>
-							<td class="isdoc-invoice__num">{{ line.lineExtensionAmountTaxInclusive }}</td>
+						<tr v-for="(payment, index) in invoice.payments" :key="index">
+							<td>{{ paymentMeansLabel(payment.paymentMeansCode) }}</td>
+							<td>{{ payment.dueDate }}</td>
+							<td>
+								{{ payment.accountNumber }}<template v-if="payment.bankCode">/{{ payment.bankCode }}</template>
+								<template v-if="!payment.accountNumber && payment.iban">{{ payment.iban }}</template>
+							</td>
+							<td>{{ payment.variableSymbol }}</td>
+							<td class="isdoc-num">{{ payment.paidAmount }} {{ invoice.currency }}</td>
 						</tr>
 					</tbody>
 				</table>
 			</section>
 
-			<!-- Tax recapitulation -->
-			<section v-if="invoice.taxSubTotals.length">
-				<h3>{{ t('files_isdoc', 'Tax recapitulation') }}</h3>
-				<table class="isdoc-invoice__table">
-					<thead>
-						<tr>
-							<th class="isdoc-invoice__num">{{ t('files_isdoc', 'VAT rate') }}</th>
-							<th class="isdoc-invoice__num">{{ t('files_isdoc', 'Taxable amount') }}</th>
-							<th class="isdoc-invoice__num">{{ t('files_isdoc', 'Tax amount') }}</th>
-							<th class="isdoc-invoice__num">{{ t('files_isdoc', 'Total incl. VAT') }}</th>
+			<!-- Bottom: VAT recapitulation + additional totals -->
+			<div class="isdoc-bottom">
+				<section v-if="invoice.taxSubTotals.length" class="isdoc-bottom__recap">
+					<div class="isdoc-label">{{ t('files_isdoc', 'Tax recapitulation') }}:</div>
+					<table class="isdoc-recap">
+						<thead>
+							<tr>
+								<th class="isdoc-num">{{ t('files_isdoc', 'Taxable amount') }}</th>
+								<th class="isdoc-num">{{ t('files_isdoc', 'VAT rate') }}</th>
+								<th class="isdoc-num">{{ t('files_isdoc', 'Tax amount') }}</th>
+								<th class="isdoc-num">{{ t('files_isdoc', 'Total incl. VAT') }}</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="(sub, index) in invoice.taxSubTotals" :key="index">
+								<td class="isdoc-num">{{ sub.taxableAmount }}</td>
+								<td class="isdoc-num">{{ sub.percent ? sub.percent + ' %' : '' }}</td>
+								<td class="isdoc-num">{{ sub.taxAmount }}</td>
+								<td class="isdoc-num">{{ sub.taxInclusiveAmount }}</td>
+							</tr>
+						</tbody>
+					</table>
+				</section>
+
+				<section v-if="totalRows.length" class="isdoc-bottom__totals">
+					<table class="isdoc-kv">
+						<tr v-for="row in totalRows" :key="row.label">
+							<th>{{ row.label }}:</th>
+							<td class="isdoc-num">{{ row.value }} {{ invoice.currency }}</td>
 						</tr>
-					</thead>
-					<tbody>
-						<tr v-for="(sub, index) in invoice.taxSubTotals" :key="index">
-							<td class="isdoc-invoice__num">{{ sub.percent ? sub.percent + ' %' : '' }}</td>
-							<td class="isdoc-invoice__num">{{ sub.taxableAmount }}</td>
-							<td class="isdoc-invoice__num">{{ sub.taxAmount }}</td>
-							<td class="isdoc-invoice__num">{{ sub.taxInclusiveAmount }}</td>
-						</tr>
-					</tbody>
-				</table>
-			</section>
+					</table>
+				</section>
+			</div>
 
-			<!-- Totals -->
-			<section>
-				<h3>{{ t('files_isdoc', 'Totals') }}</h3>
-				<dl class="isdoc-invoice__totals">
-					<template v-for="row in totalRows">
-						<dt :key="'dt-' + row.label">{{ row.label }}</dt>
-						<dd :key="'dd-' + row.label">{{ row.value }} {{ invoice.currency }}</dd>
-					</template>
-					<dt v-if="invoice.totals.payableAmount !== null" class="isdoc-invoice__payable">
-						{{ t('files_isdoc', 'Amount to pay') }}
-					</dt>
-					<dd v-if="invoice.totals.payableAmount !== null" class="isdoc-invoice__payable">
-						{{ invoice.totals.payableAmount }} {{ invoice.currency }}
-					</dd>
-				</dl>
-			</section>
+			<!-- Commercial register entry -->
+			<p v-if="registerEntry" class="isdoc-muted">
+				{{ t('files_isdoc', 'Registration') }}: {{ registerEntry }}
+			</p>
 
-			<!-- Payment information -->
-			<section v-if="invoice.payments.length">
-				<h3>{{ t('files_isdoc', 'Payment information') }}</h3>
-				<dl v-for="(payment, index) in invoice.payments"
-					:key="index"
-					class="isdoc-invoice__payment">
-					<template v-if="payment.paymentMeansCode">
-						<dt>{{ t('files_isdoc', 'Payment method') }}</dt>
-						<dd>{{ paymentMeansLabel(payment.paymentMeansCode) }}</dd>
-					</template>
-					<template v-if="payment.dueDate">
-						<dt>{{ t('files_isdoc', 'Due date') }}</dt>
-						<dd>{{ payment.dueDate }}</dd>
-					</template>
-					<template v-if="payment.accountNumber">
-						<dt>{{ t('files_isdoc', 'Bank account') }}</dt>
-						<dd>{{ payment.accountNumber }}{{ payment.bankCode ? '/' + payment.bankCode : '' }}</dd>
-					</template>
-					<template v-if="payment.iban">
-						<dt>IBAN</dt>
-						<dd>{{ payment.iban }}</dd>
-					</template>
-					<template v-if="payment.bic">
-						<dt>BIC</dt>
-						<dd>{{ payment.bic }}</dd>
-					</template>
-					<template v-if="payment.variableSymbol">
-						<dt>{{ t('files_isdoc', 'Variable symbol') }}</dt>
-						<dd>{{ payment.variableSymbol }}</dd>
-					</template>
-					<template v-if="payment.constantSymbol">
-						<dt>{{ t('files_isdoc', 'Constant symbol') }}</dt>
-						<dd>{{ payment.constantSymbol }}</dd>
-					</template>
-					<template v-if="payment.specificSymbol">
-						<dt>{{ t('files_isdoc', 'Specific symbol') }}</dt>
-						<dd>{{ payment.specificSymbol }}</dd>
-					</template>
-					<template v-if="payment.paidAmount">
-						<dt>{{ t('files_isdoc', 'Amount') }}</dt>
-						<dd>{{ payment.paidAmount }} {{ invoice.currency }}</dd>
-					</template>
-				</dl>
-			</section>
-
-			<!-- Note -->
-			<section v-if="invoice.note">
-				<h3>{{ t('files_isdoc', 'Note') }}</h3>
-				<p>{{ invoice.note }}</p>
-			</section>
-
-			<footer class="isdoc-invoice__muted">
-				ISDOC {{ invoice.version }}
+			<footer class="isdoc-muted">
+				ISDOC {{ invoice.version }}<template v-if="invoice.uuid"> · UUID {{ invoice.uuid }}</template>
 			</footer>
 		</article>
 	</div>
@@ -181,7 +282,7 @@ import { parseIsdoc } from '../services/parseIsdoc.js'
 
 /** ISDOC DocumentType code => label (see the ISDOC specification) */
 const DOCUMENT_TYPE_LABELS = {
-	1: t('files_isdoc', 'Invoice'),
+	1: t('files_isdoc', 'Invoice — tax document'),
 	2: t('files_isdoc', 'Credit note'),
 	3: t('files_isdoc', 'Debit note'),
 	4: t('files_isdoc', 'Proforma invoice'),
@@ -200,45 +301,8 @@ const PAYMENT_MEANS_LABELS = {
 	97: t('files_isdoc', 'Clearing between partners'),
 }
 
-const PartyBlock = {
-	name: 'PartyBlock',
-	props: {
-		party: { type: Object, required: true },
-	},
-	render(h) {
-		const rows = []
-		const line = (content, cls) => h('div', { class: cls }, content)
-		if (this.party.name) {
-			rows.push(line(this.party.name, 'isdoc-invoice__party-name'))
-		}
-		const street = [this.party.street, this.party.buildingNumber].filter(Boolean).join(' ')
-		if (street) {
-			rows.push(line(street))
-		}
-		const city = [this.party.postalZone, this.party.city].filter(Boolean).join(' ')
-		if (city) {
-			rows.push(line(city))
-		}
-		const country = this.party.countryName ?? this.party.countryCode
-		if (country) {
-			rows.push(line(country))
-		}
-		if (this.party.ico) {
-			rows.push(line(t('files_isdoc', 'Company ID') + ': ' + this.party.ico))
-		}
-		if (this.party.dic) {
-			rows.push(line(t('files_isdoc', 'VAT ID') + ': ' + this.party.dic))
-		}
-		return h('div', rows)
-	},
-}
-
 export default {
 	name: 'IsdocView',
-
-	components: {
-		PartyBlock,
-	},
 
 	inheritAttrs: false,
 
@@ -277,12 +341,18 @@ export default {
 			return DOCUMENT_TYPE_LABELS[this.invoice.documentType]
 				?? t('files_isdoc', 'Document type {type}', { type: this.invoice.documentType ?? '?' })
 		},
+		/** First payment carrying bank details — shown in the bank box */
+		bankPayment() {
+			return this.invoice.payments.find((p) => p.accountNumber || p.iban) ?? null
+		},
+		/** Payment used for symbols, due date and payment method */
+		primaryPayment() {
+			return this.bankPayment ?? this.invoice.payments[0] ?? null
+		},
 		/** Optional totals rows, only shown when present in the document */
 		totalRows() {
 			const totals = this.invoice.totals
 			return [
-				{ label: t('files_isdoc', 'Total excl. VAT'), value: totals.taxExclusiveAmount },
-				{ label: t('files_isdoc', 'Total incl. VAT'), value: totals.taxInclusiveAmount },
 				{ label: t('files_isdoc', 'Already claimed (excl. VAT)'), value: totals.alreadyClaimedTaxExclusiveAmount },
 				{ label: t('files_isdoc', 'Already claimed (incl. VAT)'), value: totals.alreadyClaimedTaxInclusiveAmount },
 				{ label: t('files_isdoc', 'Difference (excl. VAT)'), value: totals.differenceTaxExclusiveAmount },
@@ -290,6 +360,13 @@ export default {
 				{ label: t('files_isdoc', 'Paid deposits'), value: totals.paidDepositsAmount },
 				{ label: t('files_isdoc', 'Rounding'), value: totals.payableRoundingAmount },
 			].filter((row) => row.value !== null)
+		},
+		registerEntry() {
+			const supplier = this.invoice.supplier
+			if (!supplier) {
+				return null
+			}
+			return [supplier.registerKeptAt, supplier.registerFileRef].filter(Boolean).join(', ') || null
 		},
 	},
 
@@ -313,6 +390,14 @@ export default {
 		paymentMeansLabel(code) {
 			return PAYMENT_MEANS_LABELS[code] ?? code
 		},
+		/** Postal address as displayable lines (street, city, country) */
+		addressLines(party) {
+			return [
+				[party.street, party.buildingNumber].filter(Boolean).join(' '),
+				[party.postalZone, party.city].filter(Boolean).join(' '),
+				party.countryName ?? party.countryCode,
+			].filter(Boolean)
+		},
 	},
 }
 </script>
@@ -331,85 +416,224 @@ export default {
 	text-align: center;
 }
 
-.isdoc-invoice {
-	max-width: 900px;
-	margin: 0 auto;
-	padding: 24px;
-	color: var(--color-main-text, #222);
+/* The invoice is rendered as a white "paper" sheet, like a PDF page */
+.isdoc-paper {
+	max-width: 950px;
+	margin: 24px auto;
+	padding: 32px 40px;
+	background-color: #fff;
+	color: #222;
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+	font-size: 14px;
+	line-height: 1.45;
 }
 
-.isdoc-invoice h2,
-.isdoc-invoice h3 {
-	margin: 16px 0 8px;
-}
-
-.isdoc-invoice__meta,
-.isdoc-invoice__totals,
-.isdoc-invoice__payment {
-	display: grid;
-	grid-template-columns: max-content 1fr;
-	gap: 2px 16px;
-	margin: 8px 0;
-}
-
-.isdoc-invoice__meta dt,
-.isdoc-invoice__totals dt,
-.isdoc-invoice__payment dt {
-	font-weight: bold;
-}
-
-.isdoc-invoice__totals dd,
-.isdoc-invoice__payment dd,
-.isdoc-invoice__meta dd {
-	margin: 0;
-}
-
-.isdoc-invoice__parties {
+.isdoc-titlebar {
 	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	gap: 16px;
 	flex-wrap: wrap;
-	gap: 24px;
+	border-bottom: 2px solid #222;
+	padding-bottom: 4px;
+	margin-bottom: 12px;
+}
+
+.isdoc-titlebar__supplier {
+	font-weight: bold;
+	font-size: 16px;
+}
+
+.isdoc-titlebar__title {
+	font-weight: bold;
+	font-size: 16px;
+	text-transform: uppercase;
+	color: #15518f;
+}
+
+.isdoc-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+
+@media (max-width: 700px) {
+	.isdoc-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+.isdoc-grid__col {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.isdoc-box {
+	border: 1px solid #999;
+	border-radius: 2px;
+	padding: 8px 12px;
+	flex: 0 0 auto;
+}
+
+.isdoc-box--customer {
+	flex: 1 1 auto;
+}
+
+.isdoc-box--customer__head {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 16px;
+}
+
+.isdoc-box--customer__address {
+	margin: 8px 0 4px 16px;
+	font-size: 15px;
+}
+
+.isdoc-label {
+	color: #15518f;
+	font-weight: bold;
+	margin-bottom: 4px;
+}
+
+h3.isdoc-label {
+	font-size: 14px;
+	margin: 16px 0 4px;
+}
+
+.isdoc-party__name {
+	font-weight: bold;
+	font-size: 15px;
+}
+
+.isdoc-party__ids {
+	margin-top: 6px;
+	display: flex;
+	gap: 16px;
+	flex-wrap: wrap;
+}
+
+/* Key/value tables inside boxes */
+.isdoc-kv {
+	border-collapse: collapse;
+	width: 100%;
+}
+
+.isdoc-kv th {
+	text-align: left;
+	font-weight: normal;
+	padding: 1px 12px 1px 0;
+	white-space: nowrap;
+	width: 1%;
+}
+
+.isdoc-kv td {
+	padding: 1px 0;
+}
+
+.isdoc-kv__num {
+	text-align: right;
+	white-space: nowrap;
+}
+
+.isdoc-kv__value-box {
+	border: 1px solid #999;
+	padding: 1px 8px;
+	text-align: right;
+	white-space: nowrap;
+}
+
+.isdoc-kv--ids th {
+	padding-right: 8px;
+}
+
+.isdoc-note {
+	color: #15518f;
 	margin: 8px 0;
 }
 
-.isdoc-invoice__party {
-	flex: 1 1 250px;
-}
-
-.isdoc-invoice__party-name {
-	font-weight: bold;
-}
-
-.isdoc-invoice__table {
+/* Invoice lines table */
+.isdoc-lines {
 	width: 100%;
 	border-collapse: collapse;
-	margin: 8px 0;
+	margin: 8px 0 12px;
 }
 
-.isdoc-invoice__table th,
-.isdoc-invoice__table td {
-	border: 1px solid var(--color-border, #ddd);
+.isdoc-lines th {
+	border-top: 2px solid #222;
+	border-bottom: 1px solid #222;
 	padding: 4px 8px;
 	text-align: left;
+	font-weight: normal;
+	white-space: nowrap;
+}
+
+.isdoc-lines td {
+	padding: 4px 8px;
 	vertical-align: top;
 }
 
-.isdoc-invoice__num {
+.isdoc-lines tbody tr:first-child td {
+	padding-top: 8px;
+}
+
+.isdoc-lines tfoot td {
+	border-top: 1px solid #222;
+	padding: 4px 8px;
+}
+
+.isdoc-lines__subtotal td {
+	font-weight: normal;
+}
+
+.isdoc-lines__payable td {
+	font-weight: bold;
+	font-size: 15px;
+	text-transform: uppercase;
+	border-top: 1px solid #222;
+	border-bottom: 2px solid #222;
+}
+
+.isdoc-num {
 	text-align: right !important;
 	white-space: nowrap;
 }
 
-.isdoc-invoice__payable {
-	font-size: 1.2em;
-	font-weight: bold;
+/* Bottom area: VAT recapitulation and additional totals */
+.isdoc-bottom {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 24px;
+	flex-wrap: wrap;
+	margin: 16px 0;
 }
 
-.isdoc-invoice__payment {
-	border-top: 1px solid var(--color-border, #ddd);
-	padding-top: 8px;
+.isdoc-recap {
+	border-collapse: collapse;
 }
 
-.isdoc-invoice__muted {
-	color: var(--color-text-maxcontrast, #767676);
-	font-size: 0.9em;
+.isdoc-recap th {
+	font-weight: normal;
+	padding: 2px 12px;
+	border-bottom: 1px solid #999;
+	white-space: nowrap;
+}
+
+.isdoc-recap td {
+	padding: 2px 12px;
+}
+
+.isdoc-bottom__totals {
+	margin-left: auto;
+}
+
+.isdoc-muted {
+	color: #767676;
+	font-size: 12px;
+	margin: 12px 0 0;
 }
 </style>

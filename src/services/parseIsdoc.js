@@ -75,6 +75,8 @@ function parseParty(partyParent) {
 		return null
 	}
 	const address = child(party, 'PostalAddress')
+	const contact = child(party, 'Contact')
+	const register = child(party, 'RegisterIdentification')
 	return {
 		name: text(party, 'PartyName', 'Name'),
 		// IČO (company registration number)
@@ -87,6 +89,12 @@ function parseParty(partyParent) {
 		postalZone: text(address, 'PostalZone'),
 		countryName: text(address, 'Country', 'Name'),
 		countryCode: text(address, 'Country', 'IdentificationCode'),
+		contactName: text(contact, 'Name'),
+		telephone: text(contact, 'Telephone'),
+		email: text(contact, 'ElectronicMail'),
+		// Commercial register entry, e.g. court and file number
+		registerKeptAt: text(register, 'RegisterKeptAt'),
+		registerFileRef: text(register, 'RegisterFileRef'),
 	}
 }
 
@@ -173,11 +181,28 @@ export function parseIsdoc(xmlString) {
 		taxPointDate: text(invoice, 'TaxPointDate'),
 		currency: text(invoice, 'LocalCurrencyCode'),
 		foreignCurrency: text(invoice, 'ForeignCurrencyCode'),
+		currRate: text(invoice, 'CurrRate'),
+		refCurrRate: text(invoice, 'RefCurrRate'),
 		note: text(invoice, 'Note'),
+		orderReferences: children(child(invoice, 'OrderReferences'), 'OrderReference').map((ref) => ({
+			salesOrderID: text(ref, 'SalesOrderID'),
+			externalOrderID: text(ref, 'ExternalOrderID'),
+			issueDate: text(ref, 'IssueDate'),
+		})),
+		deliveryNoteReferences: children(child(invoice, 'DeliveryNoteReferences'), 'DeliveryNoteReference').map((ref) => ({
+			id: text(ref, 'ID'),
+			issueDate: text(ref, 'IssueDate'),
+		})),
+		originalDocumentReferences: children(child(invoice, 'OriginalDocumentReferences'), 'OriginalDocumentReference').map((ref) => ({
+			id: text(ref, 'ID'),
+			issueDate: text(ref, 'IssueDate'),
+		})),
 		supplier: parseParty(child(invoice, 'AccountingSupplierParty')),
 		customer: parseParty(child(invoice, 'AccountingCustomerParty')),
 		lines: children(child(invoice, 'InvoiceLines'), 'InvoiceLine').map(parseLine),
 		taxSubTotals: children(child(invoice, 'TaxTotal'), 'TaxSubTotal').map(parseTaxSubTotal),
+		// Total tax after deducting settled advances (direct child of TaxTotal)
+		taxTotalAmount: text(child(invoice, 'TaxTotal'), 'TaxAmount'),
 		totals: {
 			taxExclusiveAmount: text(totals, 'TaxExclusiveAmount'),
 			taxInclusiveAmount: text(totals, 'TaxInclusiveAmount'),
