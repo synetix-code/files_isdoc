@@ -4,6 +4,14 @@
 -->
 # Changelog
 
+## 0.6.1 – 2026-06-16
+
+### Changed
+
+- Reworded the app store description (English and Czech).
+- Lowered the minimum Nextcloud version from 32 to 28 (the app uses no API
+  newer than Nextcloud 21; frontend libraries are bundled).
+
 ## 0.6.0 – 2026-06-12
 
 First public release.
