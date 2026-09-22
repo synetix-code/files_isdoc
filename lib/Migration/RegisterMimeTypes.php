@@ -36,14 +36,24 @@ class RegisterMimeTypes implements IRepairStep {
 		$this->mergeJsonConfigFile('mimetypemapping.json', MimeTypeDefinitions::MAPPING, $output);
 		$this->mergeJsonConfigFile('mimetypealiases.json', MimeTypeDefinitions::ALIASES, $output);
 
+		// updateFilecache() only became part of IMimeTypeLoader in Nextcloud 32;
+		// on older releases it exists on the implementation but is not guaranteed.
+		$canRemap = method_exists($this->mimeTypeLoader, 'updateFilecache');
+
 		// Make sure the MIME types exist in the database and remap files
 		// that were uploaded before this app was installed.
 		foreach (MimeTypeDefinitions::MAPPING as $extension => $mimeTypes) {
 			$mimeTypeId = $this->mimeTypeLoader->getId($mimeTypes[0]);
+			if (!$canRemap) {
+				continue;
+			}
 			$updated = $this->mimeTypeLoader->updateFilecache($extension, $mimeTypeId);
 			if ($updated > 0) {
 				$output->info(sprintf('Updated MIME type of %d existing *.%s file(s)', $updated, $extension));
 			}
+		}
+		if (!$canRemap) {
+			$output->info('This Nextcloud cannot remap existing files; run "occ maintenance:repair" or rescan to update already uploaded ISDOC files.');
 		}
 		$this->mimeTypeLoader->reset();
 

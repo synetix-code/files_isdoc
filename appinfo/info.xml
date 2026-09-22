@@ -15,7 +15,7 @@ Supports the ISDOC 6.x standard (see https://isdoc.cz) including the .isdocx ZIP
 	<description lang="cs"><![CDATA[Náhled českých e-faktur ve formátu ISDOC (.isdoc, .isdocx) přímo v aplikaci Nextcloud Viewer. Po kliknutí na soubor se faktura zobrazí jako čitelný doklad namísto nezpracovaného XML.
 
 Podporuje standard ISDOC 6.x (viz https://isdoc.cz) včetně kontejnerového formátu .isdocx (ZIP).]]></description>
-	<version>0.6.1</version>
+	<version>0.6.2</version>
 	<licence>agpl</licence>
 	<author mail="jelinek@synetix.cz">Synetix</author>
 	<namespace>FilesIsdoc</namespace>
@@ -27,7 +27,7 @@ Podporuje standard ISDOC 6.x (viz https://isdoc.cz) včetně kontejnerového for
 	<screenshot>https://raw.githubusercontent.com/synetix-code/files_isdoc/main/screenshots/screenshot.png</screenshot>
 	<dependencies>
 		<php min-version="8.1"/>
-		<nextcloud min-version="28" max-version="33"/>
+		<nextcloud min-version="28" max-version="35"/>
 	</dependencies>
 	<repair-steps>
 		<post-migration>

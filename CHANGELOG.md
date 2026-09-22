@@ -4,6 +4,20 @@
 -->
 # Changelog
 
+## 0.6.2 – 2026-09-22
+
+### Changed
+
+- Raised the maximum supported Nextcloud version to 35. Verified against
+  Nextcloud 34.0.2 with Viewer 7 (still Vue 2.7, handler API unchanged);
+  Nextcloud 35 is declared ahead of its release.
+
+### Fixed
+
+- The install/update repair step no longer assumes `IMimeTypeLoader::
+  updateFilecache()` exists — it was only added to the interface in Nextcloud
+  32, while the app declares support from Nextcloud 28.
+
 ## 0.6.1 – 2026-06-16
 
 ### Changed
